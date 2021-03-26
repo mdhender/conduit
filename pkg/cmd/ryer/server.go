@@ -39,10 +39,29 @@ type server struct {
 func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !currentUser(r).IsAdmin {
+			log.Printf("%s: not admin\n", r.URL.Path)
 			http.NotFound(w, r)
 			return
 		}
 		h(w, r)
+	}
+}
+
+func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !currentUser(r).IsAuthenticated {
+			log.Printf("%s: not authenticated\n", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		h(w, r)
+	}
+}
+
+func (s *server) handleAdminIndex() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("adminIndex(%s)\n", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	}
 }
 
@@ -62,20 +81,23 @@ func (s *server) handleGetArticlesFeed() http.HandlerFunc {
 
 func (s *server) handleNotFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("assert(%s found)\n", r.URL.Path)
+		log.Printf("%s: not found\n", r.URL.Path)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
 }
 
 func (s *server) handleNotImplemented() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("assert(%s implemented)\n", r.URL.Path)
+		log.Printf("%s: not implemented\n", r.URL.Path)
 		http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	}
 }
 
 func currentUser(r *http.Request) (user struct {
-	IsAdmin bool
+	IsAdmin         bool
+	IsAuthenticated bool
 }) {
+	user.IsAuthenticated = true
+	user.IsAdmin = true
 	return user
 }

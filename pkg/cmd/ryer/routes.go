@@ -34,6 +34,7 @@ func (s *server) routes() {
 		method  string
 		handler http.HandlerFunc
 	}{
+		{"/api/admin", "GET", s.adminOnly(s.handleAdminIndex())},
 		{"/api/articles", "GET", s.handleNotImplemented()},
 		{"/api/articles", "POST", s.handleNotImplemented()},
 		{"/api/articles/feed", "GET", s.handleGetArticlesFeed()},
