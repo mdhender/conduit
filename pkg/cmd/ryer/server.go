@@ -46,6 +46,20 @@ func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *server) handleGetArticles() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("getArticles(%s)\n", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (s *server) handleGetArticlesFeed() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
 func (s *server) handleNotFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("assert(%s found)\n", r.URL.Path)
