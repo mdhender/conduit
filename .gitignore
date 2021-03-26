@@ -1,0 +1,11 @@
+*~
+*.dll
+*.dylib
+*.exe
+*.out
+*.so
+*.test
+*.tgz
+*.zip
+.idea/
+node_modules/
