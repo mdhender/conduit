@@ -26,6 +26,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/mdhender/conduit/internal/conduit"
 	"github.com/mdhender/conduit/internal/jsonapi"
 	"github.com/mdhender/conduit/internal/jwt"
@@ -48,7 +49,7 @@ type server struct {
 
 func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !currentUser(r).IsAdmin {
+		if !s.currentUser(r).IsAdmin {
 			log.Printf("%s: not admin\n", r.URL.Path)
 			http.NotFound(w, r)
 			return
@@ -59,12 +60,53 @@ func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 
 func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !currentUser(r).IsAuthenticated {
+		if !s.currentUser(r).IsAuthenticated {
 			log.Printf("%s: not authenticated\n", r.URL.Path)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 		h(w, r)
+	}
+}
+
+func (s *server) handleCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("currentUser\n")
+		u := s.currentUser(r).User
+		var result struct {
+			User struct {
+				Id        int     `json:"id"`
+				Email     string  `json:"email"`
+				CreatedAt string  `json:"createdAt"`
+				UpdatedAt string  `json:"updatedAt"`
+				Username  string  `json:"username"`
+				Bio       *string `json:"bio"`   // API requires this to be nullable
+				Image     *string `json:"image"` // API requires this to be nullable
+				Token     string  `json:"token,omitempty"`
+			} `json:"user"`
+		}
+		result.User.Id = u.Id
+		result.User.Email = u.Email
+		result.User.CreatedAt = u.CreatedAt.UTC().Format(s.dtfmt)
+		result.User.UpdatedAt = u.UpdatedAt.UTC().Format(s.dtfmt)
+		result.User.Username = u.Username
+		if u.Bio != "" {
+			result.User.Bio = &u.Bio
+		}
+		if u.Image != "" {
+			result.User.Image = &u.Image
+		}
+
+		data, err := json.Marshal(result)
+		if err != nil {
+			log.Printf("currentUser: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
 	}
 }
 
@@ -78,6 +120,16 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 		err := jsonapi.DecodeJSONBody(w, r, s.rejectUnknownFields, &req) // get form data
 		if err != nil {
 			log.Printf("createUser: %+v\n", err)
+			if errors.Is(err, jsonapi.ErrBadRequest) {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
+				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+				return
+			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
+				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+				return
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -173,14 +225,19 @@ func (s *server) handleNotImplemented() http.HandlerFunc {
 	}
 }
 
-func currentUser(r *http.Request) (user struct {
+func (s *server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
+	User            memory.User
 }) {
 	j, err := jwt.GetBearerToken(r)
-	if err != nil || !j.IsValid() {
+	if err != nil {
 		return user
 	}
+	if err = s.tokenFactory.Validate(j); err != nil || !j.IsValid() {
+		return user
+	}
+	user.User, _ = s.db.GetUser(j.Data().Id)
 	for _, role := range j.Data().Roles {
 		switch role {
 		case "admin":

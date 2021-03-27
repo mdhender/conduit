@@ -76,6 +76,17 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 	return u, nil
 }
 
+func (s *Store) GetUser(id int) (User, bool) {
+	s.Lock()
+	defer s.Unlock()
+	for _, u := range s.users {
+		if u.Id == id {
+			return u, true
+		}
+	}
+	return User{Id: id}, false
+}
+
 type Store struct {
 	sync.RWMutex
 	seq   int

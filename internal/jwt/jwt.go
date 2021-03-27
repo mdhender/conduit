@@ -129,13 +129,6 @@ func GetBearerToken(r *http.Request) (*JWT, error) {
 		return nil, ErrUnauthorized
 	}
 
-	// decode and extract the signature from the token
-	if rawSignature, err := decode(sections[2]); err != nil {
-		return nil, err
-	} else if err = json.Unmarshal(rawSignature, &j.s); err != nil {
-		return nil, err
-	}
-
 	return &j, nil
 }
 

@@ -50,7 +50,7 @@ func (f *Factory) Validate(j *JWT) error {
 		return err
 	}
 
-	if j.isSigned = j.s != encode(expectedSignature); !j.isSigned {
+	if j.isSigned = j.s == encode(expectedSignature); !j.isSigned {
 		return ErrUnauthorized
 	}
 

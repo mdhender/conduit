@@ -48,12 +48,16 @@ func (mr *MalformedRequest) Error() string {
 	return mr.msg
 }
 
+var ErrBadRequest = errors.New("bad request")
+var ErrRequestEntityTooLarge = errors.New("request entity too larg")
+var ErrUnsupportedMediaType = errors.New("unsupported media type")
+
 func DecodeJSONBody(w http.ResponseWriter, r *http.Request, rejectUnknown bool, dst interface{}) error {
 	switch r.Header.Get("Content-Type") {
 	case "application/json": // ok
 	case "application/json; charset=utf-8": // ok
 	default:
-		return &MalformedRequest{status: http.StatusUnsupportedMediaType, msg: "Content-Type header is not application/json; charset=utf-8"}
+		return fmt.Errorf("Content-Type %q is not supported: %w", r.Header.Get("Content-Type"), ErrUnsupportedMediaType)
 	}
 
 	// enforce a max body of 1mb. should make this a parameter.
@@ -73,17 +77,17 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, rejectUnknown bool, 
 
 		switch {
 		case errors.As(err, &syntaxError):
-			return &MalformedRequest{status: http.StatusBadRequest, msg: fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)}
+			return fmt.Errorf("Request body contains badly-formed JSON (at position %d): %w", syntaxError.Offset, ErrBadRequest)
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return &MalformedRequest{status: http.StatusBadRequest, msg: fmt.Sprintf("Request body contains badly-formed JSON")}
+			return fmt.Errorf("Request body contains badly-formed JSON: %w", ErrBadRequest)
 		case errors.As(err, &unmarshalTypeError):
-			return &MalformedRequest{status: http.StatusBadRequest, msg: fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)}
+			return fmt.Errorf("Request body contains an invalid value for the %q field (at position %d): %w", unmarshalTypeError.Field, unmarshalTypeError.Offset, ErrBadRequest)
 		case strings.HasPrefix(err.Error(), "json: unknown field "):
-			return &MalformedRequest{status: http.StatusBadRequest, msg: fmt.Sprintf("Request body contains unknown field %s", strings.TrimPrefix(err.Error(), "json: unknown field "))}
+			return fmt.Errorf("Request body contains unknown field %s: %w", strings.TrimPrefix(err.Error(), "json: unknown field "), ErrBadRequest)
 		case errors.Is(err, io.EOF):
-			return &MalformedRequest{status: http.StatusBadRequest, msg: "Request body must not be empty"}
+			return fmt.Errorf("Request body must not be empty: %w", ErrBadRequest)
 		case err.Error() == "http: request body too large":
-			return &MalformedRequest{status: http.StatusRequestEntityTooLarge, msg: "Request body must not be larger than 1MB"}
+			return fmt.Errorf("Request body must not be larger than 1MB: %w", ErrRequestEntityTooLarge)
 		default:
 			return err
 		}
@@ -91,7 +95,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, rejectUnknown bool, 
 
 	err = dec.Decode(&struct{}{})
 	if err != io.EOF {
-		return &MalformedRequest{status: http.StatusBadRequest, msg: "Request body must only contain a single JSON object"}
+		return fmt.Errorf("Request body must only contain a single JSON object: %w", ErrBadRequest)
 	}
 
 	return nil
