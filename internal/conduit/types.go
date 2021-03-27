@@ -63,9 +63,9 @@ type Profile struct {
 }
 
 type User struct {
-	Email    string `json:"email"`    // "email": "jake@jake.jake"
-	Token    string `json:"token"`    // "token": "jwt.token.here"
-	Username string `json:"username"` // "username": "jake"
-	Bio      string `json:"bio"`      // "bio": "I work at statefarm"
-	Image    string `json:"image"`    // "image": null
+	Email    string `json:"email"`           // "email": "jake@jake.jake"
+	Token    string `json:"token,omitempty"` // "token": "jwt.token.here"
+	Username string `json:"username"`        // "username": "jake"
+	Bio      string `json:"bio,omitempty"`   // "bio": "I work at statefarm"
+	Image    string `json:"image,omitempty"` // "image": null
 }

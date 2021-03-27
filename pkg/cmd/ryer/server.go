@@ -25,15 +25,20 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/mdhender/conduit/internal/conduit"
+	"github.com/mdhender/conduit/internal/jwt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/mdhender/conduit/internal/way"
 )
 
 type server struct {
 	http.Server
-	router *way.Router
+	router       *way.Router
+	tokenFactory jwt.Factory
 }
 
 func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
@@ -51,10 +56,50 @@ func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !currentUser(r).IsAuthenticated {
 			log.Printf("%s: not authenticated\n", r.URL.Path)
-			http.NotFound(w, r)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 		h(w, r)
+	}
+}
+
+// post body should contain a NewUserRequest which wraps a NewUser
+// Returns a UserResponse which wraps a User
+func (s *server) handleCreateUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("createUser\n")
+		var req conduit.NewUserRequest
+		req.User.Username = "Jacob"
+		req.User.Email = "jake@jake.jake"
+		req.User.Password = "jakejake"
+
+		var err error
+		var result conduit.UserResponse
+		result.User.Username = req.User.Username
+		result.User.Email = req.User.Email
+		result.User.Token, err = s.tokenFactory.NewToken("", result.User.Username, result.User.Email, []string{"authenticated"}, 24*time.Hour)
+		if err != nil {
+			log.Printf("createUser: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		data, err := json.Marshal(result)
+		if err != nil {
+			log.Printf("createUser: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.Write(data)
+	}
+}
+
+func (s *server) getArticlesFeed() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
@@ -68,13 +113,6 @@ func (s *server) handleAdminIndex() http.HandlerFunc {
 func (s *server) handleGetArticles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("getArticles(%s)\n", r.URL.Path)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-func (s *server) handleGetArticlesFeed() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
@@ -97,7 +135,17 @@ func currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
 }) {
-	user.IsAuthenticated = true
-	user.IsAdmin = true
+	j, err := jwt.GetBearerToken(r)
+	if err != nil || !j.IsValid() {
+		return user
+	}
+	for _, role := range j.Data().Roles {
+		switch role {
+		case "admin":
+			user.IsAdmin = true
+		case "authenticated":
+			user.IsAuthenticated = true
+		}
+	}
 	return user
 }

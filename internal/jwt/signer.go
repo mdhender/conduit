@@ -22,42 +22,40 @@
  * SOFTWARE.
  */
 
-package conduit
+package jwt
 
-// all response types derived are from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+)
 
-type ArticleResponse struct {
-	Article Article `json:"article"`
+// Signer interface
+type Signer interface {
+	Algorithm() string
+	Sign(msg []byte) ([]byte, error)
 }
 
-type MultipleArticlesResponse struct {
-	Articles      []Article `json:"articles"`
-	ArticlesCount int       `json:"articlesCount"` // "articlesCount": 2
+// HS256 implements a Signer using HMAC256.
+type HS256 struct {
+	secret []byte
 }
 
-type CommentResponse struct {
-	Comment Comment `json:"comment"`
+func HS256Signer(secret []byte) *HS256 {
+	h := HS256{secret: make([]byte, len(secret))}
+	copy(h.secret, secret)
+	return &h
 }
 
-type CommentsResponse struct {
-	Comments []Comment `json:"comments"`
+// Algorithm implements the Signer interface
+func (h *HS256) Algorithm() string {
+	return "HS256"
 }
 
-// If a request fails any validations, expect a 422 and errors in the following format:
-type ErrorResponse struct {
-	Errors struct {
-		Body []string `json:"body"`
-	} `json:"errors"`
-}
-
-type ProfileResponse struct {
-	Profile Profile `json:"profile"`
-}
-
-type TagsResponse struct {
-	Tags []string `json:"tags"`
-}
-
-type UserResponse struct {
-	User User `json:"user"`
+// Sign implements the Signer interface
+func (h *HS256) Sign(msg []byte) ([]byte, error) {
+	hm := hmac.New(sha256.New, h.secret)
+	if _, err := hm.Write(msg); err != nil {
+		return nil, err
+	}
+	return hm.Sum(nil), nil
 }

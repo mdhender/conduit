@@ -37,7 +37,7 @@ func (s *server) routes() {
 		{"/api/admin", "GET", s.adminOnly(s.handleAdminIndex())},
 		{"/api/articles", "GET", s.handleNotImplemented()},
 		{"/api/articles", "POST", s.handleNotImplemented()},
-		{"/api/articles/feed", "GET", s.handleGetArticlesFeed()},
+		{"/api/articles/feed", "GET", s.authenticatedOnly(s.getArticlesFeed())},
 		{"/api/articles/:slug", "DELETE", s.handleNotImplemented()},
 		{"/api/articles/:slug", "GET", s.handleGetArticles()},
 		{"/api/articles/:slug", "PUT", s.handleNotImplemented()},
@@ -51,8 +51,8 @@ func (s *server) routes() {
 		{"/api/profiles/:username/follow", "POST", s.handleNotImplemented()},
 		{"/api/tags", "GET", s.handleNotImplemented()},
 		{"/api/user", "GET", s.handleNotImplemented()},
-		{"/api/user", "POST", s.handleNotImplemented()},
 		{"/api/user", "PUT", s.handleNotImplemented()},
+		{"/api/users", "POST", s.handleCreateUser()},
 		{"/api/users/login", "POST", s.handleNotImplemented()},
 	} {
 		s.router.HandleFunc(route.method, route.pattern, route.handler)

@@ -22,42 +22,11 @@
  * SOFTWARE.
  */
 
-package conduit
+package jwt
 
-// all response types derived are from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
+import "errors"
 
-type ArticleResponse struct {
-	Article Article `json:"article"`
-}
-
-type MultipleArticlesResponse struct {
-	Articles      []Article `json:"articles"`
-	ArticlesCount int       `json:"articlesCount"` // "articlesCount": 2
-}
-
-type CommentResponse struct {
-	Comment Comment `json:"comment"`
-}
-
-type CommentsResponse struct {
-	Comments []Comment `json:"comments"`
-}
-
-// If a request fails any validations, expect a 422 and errors in the following format:
-type ErrorResponse struct {
-	Errors struct {
-		Body []string `json:"body"`
-	} `json:"errors"`
-}
-
-type ProfileResponse struct {
-	Profile Profile `json:"profile"`
-}
-
-type TagsResponse struct {
-	Tags []string `json:"tags"`
-}
-
-type UserResponse struct {
-	User User `json:"user"`
-}
+var ErrBadRequest = errors.New("bad request")
+var ErrExpired = errors.New("expired")
+var ErrMissingSigner = errors.New("missing signer")
+var ErrUnauthorized = errors.New("unauthorized")

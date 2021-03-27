@@ -46,6 +46,7 @@ type config struct {
 		}
 		PublicRoot string
 		Salt       string
+		Key        string
 	}
 	Cookies struct {
 		HttpOnly bool
@@ -69,11 +70,13 @@ func getConfig() (*config, error) {
 	cfg.Data.Path = "D:/GoLand/conduit/testdata/"
 	cfg.Server.Scheme = "http"
 	cfg.Server.Host = "localhost"
-	cfg.Server.Port = "8080"
+	cfg.Server.Port = "3000"
 	cfg.Server.Timeout.Idle = 10 * time.Second
 	cfg.Server.Timeout.Read = 5 * time.Second
 	cfg.Server.Timeout.Write = 10 * time.Second
 	cfg.Server.PublicRoot = "D:/GoLand/conduit/public"
+	cfg.Server.Salt = "pepper"
+	cfg.Server.Key = "curry"
 
 	var (
 		fs                    = flag.NewFlagSet("server", flag.ExitOnError)

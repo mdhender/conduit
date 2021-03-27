@@ -56,12 +56,14 @@ type UserLoginRequest struct {
 	} `json:"user"`
 }
 
-type UserRegistrationRequest struct {
-	User struct {
-		Email    string `json:"string"`   // "email": "jake@jake.jake" // required
-		Password string `json:"password"` // "password": "jakejake" // required
-		Username string `json:"username"` // "username": "Jacob" // required
-	} `json:"user"`
+type NewUserRequest struct {
+	User NewUser `json:"user"` // required
+}
+
+type NewUser struct {
+	Email    string `json:"string"`   // "email": "jake@jake.jake" // required
+	Password string `json:"password"` // "password": "jakejake" // required
+	Username string `json:"username"` // "username": "Jacob" // required
 }
 
 type UserUpdateRequest struct {
