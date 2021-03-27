@@ -27,7 +27,9 @@ package main
 import (
 	"encoding/json"
 	"github.com/mdhender/conduit/internal/conduit"
+	"github.com/mdhender/conduit/internal/jsonapi"
 	"github.com/mdhender/conduit/internal/jwt"
+	"github.com/mdhender/conduit/internal/store/memory"
 	"log"
 	"net/http"
 	"time"
@@ -37,8 +39,11 @@ import (
 
 type server struct {
 	http.Server
-	router       *way.Router
-	tokenFactory jwt.Factory
+	router              *way.Router
+	tokenFactory        jwt.Factory
+	db                  *memory.Store
+	dtfmt               string // format string for timestamps in responses
+	rejectUnknownFields bool
 }
 
 func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
@@ -68,16 +73,52 @@ func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 func (s *server) handleCreateUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("createUser\n")
-		var req conduit.NewUserRequest
-		req.User.Username = "Jacob"
-		req.User.Email = "jake@jake.jake"
-		req.User.Password = "jakejake"
 
-		var err error
-		var result conduit.UserResponse
-		result.User.Username = req.User.Username
-		result.User.Email = req.User.Email
-		result.User.Token, err = s.tokenFactory.NewToken("", result.User.Username, result.User.Email, []string{"authenticated"}, 24*time.Hour)
+		var req conduit.NewUserRequest
+		err := jsonapi.DecodeJSONBody(w, r, s.rejectUnknownFields, &req) // get form data
+		if err != nil {
+			log.Printf("createUser: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		u, errs := s.db.CreateUser(req.User.Username, req.User.Email, req.User.Password)
+		if errs != nil {
+			w.Header().Add("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			var result struct {
+				Errors map[string][]string `json:"errors"`
+			}
+			result.Errors = errs
+			data, err := json.Marshal(result)
+			if err != nil {
+				log.Printf("createUser: %+v\n", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			_, _ = w.Write(data)
+			return
+		}
+
+		var result struct {
+			User struct {
+				Id        int     `json:"id"`
+				Email     string  `json:"email"`
+				CreatedAt string  `json:"createdAt"`
+				UpdatedAt string  `json:"updatedAt"`
+				Username  string  `json:"username"`
+				Bio       *string `json:"bio"`   // API requires this to be nullable
+				Image     *string `json:"image"` // API requires this to be nullable
+				Token     string  `json:"token"`
+			} `json:"user"`
+		}
+		result.User.Id = u.Id
+		result.User.Email = u.Email
+		result.User.CreatedAt = u.CreatedAt.UTC().Format(s.dtfmt)
+		result.User.UpdatedAt = u.UpdatedAt.UTC().Format(s.dtfmt)
+		result.User.Username = u.Username
+
+		result.User.Token, err = s.tokenFactory.NewToken(u.Id, result.User.Username, result.User.Email, []string{"authenticated"}, 24*time.Hour)
 		if err != nil {
 			log.Printf("createUser: %+v\n", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -92,7 +133,8 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 		}
 
 		w.Header().Add("Content-Type", "application/json; charset=utf-8")
-		w.Write(data)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
 	}
 }
 

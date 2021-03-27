@@ -57,7 +57,7 @@ func (f *Factory) Validate(j *JWT) error {
 	return nil // valid signature
 }
 
-func (f *Factory) NewToken(uuid, username, email string, roles []string, ttl time.Duration) (string, error) {
+func (f *Factory) NewToken(id int, username, email string, roles []string, ttl time.Duration) (string, error) {
 	var j JWT
 
 	j.h.TokenType = "JWT"
@@ -66,7 +66,7 @@ func (f *Factory) NewToken(uuid, username, email string, roles []string, ttl tim
 	j.p.ExpirationTime = time.Now().Add(ttl).Unix()
 	j.p.Private.TokenType = j.h.TokenType
 	j.p.Private.Algorithm = j.h.Algorithm
-	j.p.Private.UUID = uuid
+	j.p.Private.Id = id
 	j.p.Private.Username = username
 	j.p.Private.Email = email
 	j.p.Private.Roles = roles

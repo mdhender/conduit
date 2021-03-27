@@ -61,27 +61,27 @@ type JWT struct {
 		// The value must be a NumericDate.
 		IssuedAt int64 `json:"iat,omitempty"`
 		// Case sensitive unique identifier of the token even among different issuers.
-		JWTID   string `json:"jti,omitempty"`
+		JWTID string `json:"jti,omitempty"`
 		// Private data for use by the application.
 		Private struct {
 			Algorithm string   `json:"alg"`
 			TokenType string   `json:"typ"`
-			UUID      string   `json:"uuid,omitempty"`
+			Id        int      `json:"id,omitempty"`
 			Username  string   `json:"username,omitempty"`
 			Email     string   `json:"email,omitempty"`
 			Roles     []string `json:"roles,omitempty"`
-		}   `json:"private"`
-		b64     string // payload marshalled to JSON and then base-64 encoded
+		} `json:"private"`
+		b64 string // payload marshalled to JSON and then base-64 encoded
 	}
 	s        string // signature base-64 encoded
 	isSigned bool   // true only if the signature has been verified
 }
 
 type Data struct {
-	UUID      string
-	Username  string
-	Email     string
-	Roles     []string
+	Id       int
+	Username string
+	Email    string
+	Roles    []string
 }
 
 // pull the bearer token from a request header.
@@ -140,11 +140,11 @@ func GetBearerToken(r *http.Request) (*JWT, error) {
 }
 
 func (j *JWT) Data() Data {
-	return Data {
-		UUID: j.p.Private.UUID,
+	return Data{
+		Id:       j.p.Private.Id,
 		Username: j.p.Private.Username,
-		Email: j.p.Private.Email,
-		Roles: j.p.Private.Roles,
+		Email:    j.p.Private.Email,
+		Roles:    j.p.Private.Roles,
 	}
 }
 

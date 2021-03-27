@@ -53,7 +53,8 @@ type config struct {
 		Secure   bool
 	}
 	Data struct {
-		Path string
+		Path            string
+		TimestampFormat string
 	}
 }
 
@@ -68,6 +69,7 @@ type config struct {
 func getConfig() (*config, error) {
 	var cfg config
 	cfg.Data.Path = "D:/GoLand/conduit/testdata/"
+	cfg.Data.TimestampFormat = "2006-01-02T15:04:05.99999999Z"
 	cfg.Server.Scheme = "http"
 	cfg.Server.Host = "localhost"
 	cfg.Server.Port = "3000"

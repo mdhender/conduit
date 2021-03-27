@@ -61,7 +61,7 @@ type NewUserRequest struct {
 }
 
 type NewUser struct {
-	Email    string `json:"string"`   // "email": "jake@jake.jake" // required
+	Email    string `json:"email"`    // "email": "jake@jake.jake" // required
 	Password string `json:"password"` // "password": "jakejake" // required
 	Username string `json:"username"` // "username": "Jacob" // required
 }
