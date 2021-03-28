@@ -32,9 +32,7 @@ import (
 )
 
 func New() *Store {
-	return &Store{
-		users: make(map[string]User),
-	}
+	return &Store{}
 }
 
 func (s *Store) CreateUser(username, email, password string) (User, map[string][]string) {
@@ -50,11 +48,11 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 	if password = strings.TrimSpace(password); password == "" {
 		errs["password"] = append(errs["password"], "can't be blank")
 	}
-	for _, u := range s.users {
-		if u.Username == username {
+	for i := range s.users {
+		if s.users[i].Username == username {
 			errs["username"] = append(errs["username"], "has already been taken")
 		}
-		if u.Email == email {
+		if s.users[i].Email == email {
 			errs["email"] = append(errs["email"], "has already been taken")
 		}
 	}
@@ -71,7 +69,7 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 	u.Password = password
 	u.CreatedAt = time.Now().UTC()
 	u.UpdatedAt = time.Now().UTC()
-	s.users[u.Username] = u
+	s.users = append(s.users, u)
 
 	return u, nil
 }
@@ -79,9 +77,9 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 func (s *Store) GetUser(id int) (User, bool) {
 	s.Lock()
 	defer s.Unlock()
-	for _, u := range s.users {
-		if u.Id == id {
-			return u, true
+	for i := range s.users {
+		if s.users[i].Id == id {
+			return s.users[i], true
 		}
 	}
 	return User{Id: id}, false
@@ -90,7 +88,7 @@ func (s *Store) GetUser(id int) (User, bool) {
 type Store struct {
 	sync.RWMutex
 	seq   int
-	users map[string]User
+	users []User
 }
 
 type User struct {

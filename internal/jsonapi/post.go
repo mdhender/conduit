@@ -52,7 +52,7 @@ var ErrBadRequest = errors.New("bad request")
 var ErrRequestEntityTooLarge = errors.New("request entity too larg")
 var ErrUnsupportedMediaType = errors.New("unsupported media type")
 
-func DecodeJSONBody(w http.ResponseWriter, r *http.Request, rejectUnknown bool, dst interface{}) error {
+func GetFormData(w http.ResponseWriter, r *http.Request, rejectUnknown bool, dst interface{}) error {
 	switch r.Header.Get("Content-Type") {
 	case "application/json": // ok
 	case "application/json; charset=utf-8": // ok

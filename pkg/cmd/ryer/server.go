@@ -40,6 +40,7 @@ import (
 
 type server struct {
 	http.Server
+	debug               bool
 	router              *way.Router
 	tokenFactory        jwt.Factory
 	db                  *memory.Store
@@ -47,10 +48,25 @@ type server struct {
 	rejectUnknownFields bool
 }
 
+func defaultServer() *server {
+	return &server{
+		router:       way.NewRouter(),
+		tokenFactory: jwt.NewFactory("salt+pepper"),
+		db:           memory.New(),
+		dtfmt:        "2006-01-02T15:04:05.99999999Z",
+	}
+}
+
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
+}
+
 func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.currentUser(r).IsAdmin {
-			log.Printf("%s: not admin\n", r.URL.Path)
+			if s.debug {
+				log.Printf("%s: not admin\n", r.URL.Path)
+			}
 			http.NotFound(w, r)
 			return
 		}
@@ -61,7 +77,9 @@ func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.currentUser(r).IsAuthenticated {
-			log.Printf("%s: not authenticated\n", r.URL.Path)
+			if s.debug {
+				log.Printf("%s: not authenticated\n", r.URL.Path)
+			}
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
@@ -71,7 +89,9 @@ func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 
 func (s *server) handleCurrentUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("currentUser\n")
+		if s.debug {
+			log.Printf("currentUser\n")
+		}
 		u := s.currentUser(r).User
 		var result struct {
 			User struct {
@@ -99,7 +119,9 @@ func (s *server) handleCurrentUser() http.HandlerFunc {
 
 		data, err := json.Marshal(result)
 		if err != nil {
-			log.Printf("currentUser: %+v\n", err)
+			if s.debug {
+				log.Printf("currentUser: %+v\n", err)
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -114,23 +136,25 @@ func (s *server) handleCurrentUser() http.HandlerFunc {
 // Returns a UserResponse which wraps a User
 func (s *server) handleCreateUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("createUser\n")
+		if s.debug {
+			log.Printf("createUser\n")
+		}
 
 		var req conduit.NewUserRequest
-		err := jsonapi.DecodeJSONBody(w, r, s.rejectUnknownFields, &req) // get form data
+		err := jsonapi.GetFormData(w, r, s.rejectUnknownFields, &req)
 		if err != nil {
-			log.Printf("createUser: %+v\n", err)
+			if s.debug {
+				log.Printf("createUser: %+v\n", err)
+			}
 			if errors.Is(err, jsonapi.ErrBadRequest) {
 				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-				return
 			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
 				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
-				return
 			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
 				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
-				return
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
@@ -144,7 +168,9 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 			result.Errors = errs
 			data, err := json.Marshal(result)
 			if err != nil {
-				log.Printf("createUser: %+v\n", err)
+				if s.debug {
+					log.Printf("createUser: %+v\n", err)
+				}
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -172,14 +198,18 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 
 		result.User.Token, err = s.tokenFactory.NewToken(u.Id, result.User.Username, result.User.Email, []string{"authenticated"}, 24*time.Hour)
 		if err != nil {
-			log.Printf("createUser: %+v\n", err)
+			if s.debug {
+				log.Printf("createUser: %+v\n", err)
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
 		data, err := json.Marshal(result)
 		if err != nil {
-			log.Printf("createUser: %+v\n", err)
+			if s.debug {
+				log.Printf("createUser: %+v\n", err)
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -192,35 +222,45 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 
 func (s *server) getArticlesFeed() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
+		if s.debug {
+			log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
+		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
 func (s *server) handleAdminIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("adminIndex(%s)\n", r.URL.Path)
+		if s.debug {
+			log.Printf("adminIndex(%s)\n", r.URL.Path)
+		}
 		http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	}
 }
 
 func (s *server) handleGetArticles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("getArticles(%s)\n", r.URL.Path)
+		if s.debug {
+			log.Printf("getArticles(%s)\n", r.URL.Path)
+		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
 func (s *server) handleNotFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s: not found\n", r.URL.Path)
+		if s.debug {
+			log.Printf("%s: not found\n", r.URL.Path)
+		}
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
 }
 
 func (s *server) handleNotImplemented() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s: not implemented\n", r.URL.Path)
+		if s.debug {
+			log.Printf("%s: not implemented\n", r.URL.Path)
+		}
 		http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	}
 }

@@ -24,11 +24,13 @@
 
 package main
 
-import "net/http"
+import (
+	"net/http"
+)
 
-// routes initializes all routes exposed by the server
+// routes initializes all routes exposed by the server.
+// routes are taken from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
 func (s *server) routes() {
-	// routes are taken from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
 	for _, route := range []struct {
 		pattern string
 		method  string

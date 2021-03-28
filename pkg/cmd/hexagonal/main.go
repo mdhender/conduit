@@ -22,42 +22,10 @@
  * SOFTWARE.
  */
 
-// Package main implements a Conduit server in the style of Mat Ryer's server.
-// (see https://pace.dev/blog/2018/05/09/how-I-write-http-services-after-eight-years.html)
-// (see https://svlapin.github.io/engineering/2019/09/14/go-patterns.html)
+// Package main implements a Conduit server using a Hexagonal (
+// also known as Ports and Adapters) style.
 package main
 
-import (
-	"fmt"
-	"github.com/mdhender/conduit/internal/jwt"
-	"log"
-	"net"
-	"os"
-)
-
 func main() {
-	if cfg, err := getConfig(); err != nil {
-		fmt.Printf("%+v\n", err)
-		os.Exit(2)
-	} else if err = run(cfg); err != nil {
-		fmt.Printf("%+v\n", err)
-		os.Exit(2)
-	}
-}
-
-func run(cfg *config) error {
-	s := defaultServer()
-	s.Addr = net.JoinHostPort(cfg.Server.Host, cfg.Server.Port)
-	s.IdleTimeout = cfg.Server.Timeout.Idle
-	s.ReadTimeout = cfg.Server.Timeout.Read
-	s.WriteTimeout = cfg.Server.Timeout.Write
-	s.MaxHeaderBytes = 1 << 20
-	s.Handler = s.router
-	s.dtfmt = cfg.Data.TimestampFormat
-	s.tokenFactory = jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key)
-
-	s.routes()
-
-	log.Printf("[server] listening on %s\n", s.Addr)
-	return s.ListenAndServe()
+	panic("assert(Hexagonal implemented)")
 }
