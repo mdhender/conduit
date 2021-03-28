@@ -25,6 +25,13 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/mdhender/conduit/internal/conduit"
+	"github.com/mdhender/conduit/internal/jwt"
+	"github.com/mdhender/conduit/internal/store/memory"
+	"github.com/mdhender/conduit/internal/way"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,51 +39,107 @@ import (
 	"testing"
 )
 
-func TestAPI(t *testing.T) {
-	type request struct {
-		method string
-		target string
-		body   io.Reader
+func newServer() *server {
+	srv := &server{
+		db:           memory.New(),
+		dtfmt:        "2006-01-02T15:04:05.99999999Z",
+		router:       way.NewRouter(),
+		tokenFactory: jwt.NewFactory("salt+pepper"),
+	}
+	srv.MaxHeaderBytes = 1 << 20
+	srv.Handler = srv.router
+	srv.routes()
+	return srv
+}
+
+var contentType string = "application/json; charset=utf-8"
+
+func fetch(body io.Reader, data interface{}) error {
+	dec := json.NewDecoder(body)
+
+	// enforce checking for unknown fields when parsing the body.
+	dec.DisallowUnknownFields()
+
+	err := dec.Decode(&data)
+	if err != nil {
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+
+		switch {
+		case errors.As(err, &syntaxError):
+			return fmt.Errorf("body contains badly-formed JSON (at position %d)", syntaxError.Offset)
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return fmt.Errorf("body contains badly-formed JSON")
+		case errors.As(err, &unmarshalTypeError):
+			return fmt.Errorf("body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			return fmt.Errorf("body contains unknown field %s", strings.TrimPrefix(err.Error(), "json: unknown field "))
+		case errors.Is(err, io.EOF):
+			return fmt.Errorf("body must not be empty")
+		default:
+			return err
+		}
 	}
 
-	// Specification: API
+	err = dec.Decode(&struct{}{})
+	if err != io.EOF {
+		return fmt.Errorf("body must only contain a single JSON object")
+	}
+
+	return nil
+}
+
+func TestUser(t *testing.T) {
+	// Specification: User API
 
 	// When given a new server
-	srv := defaultServer()
-	srv.routes()
+	srv := newServer()
 	// And the request is GET /api/user
-	r := request{"GET", "/api/user", strings.NewReader("")}
+	req := httptest.NewRequest("GET", "/api/user", nil)
 	// Then executing the request should fail with status of 401 (not authorized)
 	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, httptest.NewRequest(r.method, r.target, r.body))
+	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
-		t.Errorf("api: %q %q expected %d: got %d\n", r.method, r.target, http.StatusUnauthorized, w.Code)
+		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
 	}
+}
+
+func TestUsers(t *testing.T) {
+	// Specification: Users API
 
 	// When given a new server
-	srv = defaultServer()
-	srv.routes()
+	srv := newServer()
 	// And the request is POST /api/users with a valid user with no Content-Type header
-	r = request{"POST", "/api/users", strings.NewReader(`{"user":{"username": "Jacob","email": "jake@jake.jake","password": "jakejake"}}`)}
+	req := httptest.NewRequest("POST", "/api/users", strings.NewReader(`{"user":{"username": "Jacob","email": "jake@jake.jake","password": "jakejake"}}`))
 	// Then executing the request should succeed with status of 200 (OK)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, httptest.NewRequest(r.method, r.target, r.body))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusUnsupportedMediaType {
-		t.Errorf("api: %q %q expected %d: got %d\n", r.method, r.target, http.StatusUnsupportedMediaType, w.Code)
+		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnsupportedMediaType, w.Code)
 	}
 
 	// When given a new server
-	srv = defaultServer()
-	srv.routes()
+	srv = newServer()
 	// And the request is POST /api/users with a valid user
-	req := httptest.NewRequest("POST", "/api/users", strings.NewReader(`{"user":{"username": "Jacob","email": "jake@jake.jake","password": "jakejake"}}`))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req = httptest.NewRequest("POST", "/api/users", strings.NewReader(`{"user":{"username": "Jacob","email": "jake@jake.jake","password": "jakejake"}}`))
+	req.Header.Set("Content-Type", contentType)
 	// Then executing the request should succeed with status of 200 (OK)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d: got %d\n", r.method, r.target, http.StatusOK, w.Code)
+		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusOK, w.Code)
+	} else {
+		// And return a valid User
+		var userResponse conduit.UserResponse
+		if err := fetch(w.Result().Body, &userResponse); err != nil {
+			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if userResponse.User.Email != "jake@jake.jake" {
+				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, "Jacob", userResponse.User.Username)
+			}
+			if userResponse.User.Username != "Jacob" {
+				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, "Jacob", userResponse.User.Username)
+			}
+		}
 	}
-	// And return a valid User
-	t.Errorf("api: %q %q test not fully implemented\n", r.method, r.target)
 }

@@ -30,6 +30,8 @@ package main
 import (
 	"fmt"
 	"github.com/mdhender/conduit/internal/jwt"
+	"github.com/mdhender/conduit/internal/store/memory"
+	"github.com/mdhender/conduit/internal/way"
 	"log"
 	"net"
 	"os"
@@ -46,15 +48,18 @@ func main() {
 }
 
 func run(cfg *config) error {
-	s := defaultServer()
+	s := &server{
+		db:           memory.New(),
+		dtfmt:        cfg.Data.TimestampFormat,
+		router:       way.NewRouter(),
+		tokenFactory: jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key),
+	}
 	s.Addr = net.JoinHostPort(cfg.Server.Host, cfg.Server.Port)
 	s.IdleTimeout = cfg.Server.Timeout.Idle
 	s.ReadTimeout = cfg.Server.Timeout.Read
 	s.WriteTimeout = cfg.Server.Timeout.Write
 	s.MaxHeaderBytes = 1 << 20
 	s.Handler = s.router
-	s.dtfmt = cfg.Data.TimestampFormat
-	s.tokenFactory = jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key)
 
 	s.routes()
 

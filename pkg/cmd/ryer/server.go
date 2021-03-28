@@ -48,15 +48,6 @@ type server struct {
 	rejectUnknownFields bool
 }
 
-func defaultServer() *server {
-	return &server{
-		router:       way.NewRouter(),
-		tokenFactory: jwt.NewFactory("salt+pepper"),
-		db:           memory.New(),
-		dtfmt:        "2006-01-02T15:04:05.99999999Z",
-	}
-}
-
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
@@ -141,7 +132,7 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 		}
 
 		var req conduit.NewUserRequest
-		err := jsonapi.GetFormData(w, r, s.rejectUnknownFields, &req)
+		err := jsonapi.Data(w, r, s.rejectUnknownFields, &req)
 		if err != nil {
 			if s.debug {
 				log.Printf("createUser: %+v\n", err)

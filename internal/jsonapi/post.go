@@ -52,7 +52,7 @@ var ErrBadRequest = errors.New("bad request")
 var ErrRequestEntityTooLarge = errors.New("request entity too larg")
 var ErrUnsupportedMediaType = errors.New("unsupported media type")
 
-func GetFormData(w http.ResponseWriter, r *http.Request, rejectUnknown bool, dst interface{}) error {
+func Data(w http.ResponseWriter, r *http.Request, rejectUnknown bool, data interface{}) error {
 	switch r.Header.Get("Content-Type") {
 	case "application/json": // ok
 	case "application/json; charset=utf-8": // ok
@@ -70,7 +70,7 @@ func GetFormData(w http.ResponseWriter, r *http.Request, rejectUnknown bool, dst
 		dec.DisallowUnknownFields()
 	}
 
-	err := dec.Decode(&dst)
+	err := dec.Decode(&data)
 	if err != nil {
 		var syntaxError *json.SyntaxError
 		var unmarshalTypeError *json.UnmarshalTypeError
