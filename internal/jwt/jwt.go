@@ -142,16 +142,28 @@ func (j *JWT) Data() Data {
 }
 
 func (j *JWT) IsValid() bool {
-	if !j.isSigned || j.h.Algorithm != j.p.Private.Algorithm || j.h.TokenType != j.p.Private.TokenType {
+	now := time.Now().UTC()
+	if j == nil {
+		//log.Printf("jwt is nil\n")
 		return false
-	}
-	now := time.Now()
-	if j == nil || j.p.IssuedAt == 0 || j.p.ExpirationTime == 0 {
-		return false
-	} else if !now.After(time.Unix(j.p.IssuedAt, 0)) {
+	} else if !j.isSigned || j.h.Algorithm != j.p.Private.Algorithm || j.h.TokenType != j.p.Private.TokenType {
+		//log.Printf("alg %q typ %q signed %v borked\n", j.h.Algorithm, j.h.TokenType, j.isSigned)
 		return false
 	} else if j.p.NotBefore != 0 && !now.Before(time.Unix(j.p.NotBefore, 0)) {
+		//log.Printf("alg %q typ %q signed %v !now.Before(notBefore)\n", j.h.Algorithm, j.h.TokenType, j.isSigned)
+		return false
+	} else if j.p.IssuedAt == 0 {
+		//log.Printf("alg %q typ %q signed %v no issue timestamp\n", j.h.Algorithm, j.h.TokenType, j.isSigned)
+		return false
+	} else if !now.After(time.Unix(j.p.IssuedAt, 0)) {
+		//log.Printf("alg %q typ %q signed %v !now.After(issuedAt) %s %s\n", j.h.Algorithm, j.h.TokenType, j.isSigned, now.Format("2006-01-02T15:04:05.99999999Z"), time.Unix(j.p.IssuedAt, 0).Format("2006-01-02T15:04:05.99999999Z"))
+		return false
+	} else if j.p.ExpirationTime == 0 {
+		//log.Printf("alg %q typ %q signed %v no expiration timestamp\n", j.h.Algorithm, j.h.TokenType, j.isSigned)
+		return false
+	} else if !time.Unix(j.p.ExpirationTime, 0).After(now) {
+		//log.Printf("alg %q typ %q signed %v !expiresAt.After(now)\n", j.h.Algorithm, j.h.TokenType, j.isSigned)
 		return false
 	}
-	return time.Unix(j.p.ExpirationTime, 0).After(now)
+	return true
 }

@@ -57,7 +57,7 @@ func (f *Factory) Validate(j *JWT) error {
 	return nil // valid signature
 }
 
-func (f *Factory) NewToken(id int, username, email string, roles []string, ttl time.Duration) (string, error) {
+func (f *Factory) NewToken(ttl time.Duration, id int, username, email string, roles ...string) string {
 	var j JWT
 
 	j.h.TokenType = "JWT"
@@ -71,23 +71,15 @@ func (f *Factory) NewToken(id int, username, email string, roles []string, ttl t
 	j.p.Private.Email = email
 	j.p.Private.Roles = roles
 
-	if h, err := json.MarshalIndent(j.h, "  ", "  "); err != nil {
-		return "", err
-	} else {
+	if h, err := json.MarshalIndent(j.h, "  ", "  "); err == nil {
 		j.h.b64 = encode(h)
 	}
-
-	if p, err := json.MarshalIndent(j.p, "  ", "  "); err != nil {
-		return "", err
-	} else {
+	if p, err := json.MarshalIndent(j.p, "  ", "  "); err == nil {
 		j.p.b64 = encode(p)
 	}
-
-	rawSignature, err := f.s.Sign([]byte(j.h.b64 + "." + j.p.b64))
-	if err != nil {
-		return "", err
+	if rawSignature, err := f.s.Sign([]byte(j.h.b64 + "." + j.p.b64)); err == nil {
+		j.s = encode(rawSignature)
 	}
-	j.s = encode(rawSignature)
 
-	return j.h.b64 + "." + j.p.b64 + "." + j.s, nil
+	return j.h.b64 + "." + j.p.b64 + "." + j.s
 }

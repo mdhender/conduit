@@ -186,15 +186,7 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 		result.User.CreatedAt = u.CreatedAt.UTC().Format(s.dtfmt)
 		result.User.UpdatedAt = u.UpdatedAt.UTC().Format(s.dtfmt)
 		result.User.Username = u.Username
-
-		result.User.Token, err = s.tokenFactory.NewToken(u.Id, result.User.Username, result.User.Email, []string{"authenticated"}, 24*time.Hour)
-		if err != nil {
-			if s.debug {
-				log.Printf("createUser: %+v\n", err)
-			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
+		result.User.Token = s.tokenFactory.NewToken(24*time.Hour, u.Id, result.User.Username, result.User.Email, "authenticated")
 
 		data, err := json.Marshal(result)
 		if err != nil {
@@ -264,8 +256,9 @@ func (s *server) currentUser(r *http.Request) (user struct {
 	j, err := jwt.GetBearerToken(r)
 	if err != nil {
 		return user
-	}
-	if err = s.tokenFactory.Validate(j); err != nil || !j.IsValid() {
+	} else if err = s.tokenFactory.Validate(j); err != nil {
+		return user
+	} else if !j.IsValid() {
 		return user
 	}
 	user.User, _ = s.db.GetUser(j.Data().Id)
