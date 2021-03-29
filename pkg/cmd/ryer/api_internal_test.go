@@ -39,6 +39,108 @@ import (
 	"time"
 )
 
+func TestRegistration(t *testing.T) {
+	// Specification: Registration API
+
+	// When given a new Server
+	// And the request is POST /api/users
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is a NewUserRequest with the values
+	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
+	srv := newServer()
+	newUser := conduit.NewUser{Username: "Jacob", Email: "jake@jake.jake", Password: "jakejake"}
+	req := request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, contentType)
+	// Then executing the request should succeed with status of 200 (ok)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusOK, w.Code)
+	} else {
+		// And return a valid User
+		var userResponse conduit.UserResponse
+		if err := fetch(w.Result().Body, &userResponse); err != nil {
+			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if userResponse.User.Email != newUser.Email {
+				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, newUser.Email, userResponse.User.Username)
+			}
+			if userResponse.User.Username != newUser.Username {
+				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, newUser.Username, userResponse.User.Username)
+			}
+		}
+	}
+
+	// When given the prior Server
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is a NewUserRequest with the values
+	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
+	req = request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, contentType)
+	// Then executing the request should fail with status of 422 (unprocessable entity)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given the prior Server
+	// And the request content type header is "text/plain"
+	// And the request body is a NewUserRequest with the values
+	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
+	srv = newServer()
+	req = request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, keyValue{key: "Content-Type", value: "text/plain"})
+	// Then executing the request should fail with status of 422 (unprocessable entity)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusUnsupportedMediaType {
+		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnsupportedMediaType, http.StatusText(http.StatusUnsupportedMediaType), w.Code, http.StatusText(w.Code))
+	}
+}
+
+func TestAuthentication(t *testing.T) {
+	// Specification: Authentication API
+
+	// When given a new server
+	srv := newServer()
+	// And the user with e-mail "jake@jake.jake" and password "jakejake" has been added
+	srv.ServeHTTP(httptest.NewRecorder(), request("POST", "/api/users", conduit.NewUserRequest{User: conduit.NewUser{Username: "Jacob", Email: "jake@jake.jake", Password: "jakejake"}}, contentType))
+	// And the request is POST /api/users/login
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is a LoginUserRequest with the values
+	//   { "user": { "email": "jake@jake.jake", "password": "jakejake" } }
+	loginUser := conduit.LoginUser{Email: "jake@jake.jake", Password: "jakejake"}
+	req := request("POST", "/api/users/login", conduit.LoginUserRequest{User: loginUser}, contentType)
+	// Then executing the request should succeed with status of 200 (ok)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusOK, http.StatusText(http.StatusOK), w.Code, http.StatusText(w.Code))
+	} else {
+		// And return a valid User with the e-mail address of "jake@jake.jake"
+		var userResponse conduit.UserResponse
+		if err := fetch(w.Result().Body, &userResponse); err != nil {
+			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if userResponse.User.Email != loginUser.Email {
+				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, loginUser.Email, userResponse.User.Username)
+			}
+		}
+	}
+
+	// When given the prior server
+	// And the request is POST /api/users/login
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is a LoginUserRequest with the values
+	//   { "user": { "email": "jake@jake.jake", "password": "fakefake" } }
+	loginUser = conduit.LoginUser{Email: "jake@jake.jake", Password: "fakefake"}
+	req = request("POST", "/api/users/login", conduit.LoginUserRequest{User: loginUser}, contentType)
+	// Then executing the request should fail with status of 401 (unauthorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), w.Code, http.StatusText(w.Code))
+	}
+}
+
 func TestUser(t *testing.T) {
 	srv := newServer()
 	validBearerToken := keyValue{
@@ -86,6 +188,30 @@ func TestUser(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
 	}
+}
+
+func TestProfile(t *testing.T) {
+	// Specification: Profile API
+
+	// When given a new Server
+	// And the user with username "Jacob," e-mail "jake@jake.jake," and password "jakejake" has been added
+	// And the user with username "Anne," e-mail "anne@anne.anne," and password "anneanne" has been added
+	// And the request is GET /api/profiles/Anne
+	// And the request content type header is "application/json; charset=utf-8"
+	// Then executing the request should succeed with status of 200 (ok)
+	// And return a valid Profile with the username of "Anne"
+
+	// When given the prior Server
+	// And the request is POST /api/profiles/:username/follow
+	// And the request includes a valid bearer token for the user "jake@jake.jake"
+	// Then executing the request should succeed with status of 200 (ok)
+	// And return a valid Profile with the username of "Anne"
+
+	// When given the prior Server
+	// And the request is DELETE /api/profiles/Anne/follow
+	// And the request includes a valid bearer token for the user "jake@jake.jake"
+	// Then executing the request should succeed with status of 200 (ok)
+	// And return a valid Profile with the username of "Anne"
 }
 
 func TestUsers(t *testing.T) {
