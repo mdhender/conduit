@@ -98,43 +98,20 @@ func (s *Server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) handleCurrentUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.debug {
-			log.Printf("currentUser\n")
-		}
 		u := s.currentUser(r).User
-		var result struct {
-			User struct {
-				Id        int     `json:"id"`
-				Email     string  `json:"email"`
-				CreatedAt string  `json:"createdAt"`
-				UpdatedAt string  `json:"updatedAt"`
-				Username  string  `json:"username"`
-				Bio       *string `json:"bio"`   // API requires this to be nullable
-				Image     *string `json:"image"` // API requires this to be nullable
-				Token     string  `json:"token,omitempty"`
-			} `json:"user"`
+		user := conduit.User{
+			Email:    u.Email,
+			Token:    s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Username: u.Username,
+			Bio:      u.Bio,
+			Image:    u.Image,
 		}
-		result.User.Id = u.Id
-		result.User.Email = u.Email
-		result.User.CreatedAt = u.CreatedAt.UTC().Format(s.dtfmt)
-		result.User.UpdatedAt = u.UpdatedAt.UTC().Format(s.dtfmt)
-		result.User.Username = u.Username
-		if u.Bio != "" {
-			result.User.Bio = &u.Bio
-		}
-		if u.Image != "" {
-			result.User.Image = &u.Image
-		}
-
-		data, err := json.Marshal(result)
+		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {
-			if s.debug {
-				log.Printf("currentUser: %+v\n", err)
-			}
+			log.Printf("currentUser: %+v\n", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-
 		w.Header().Add("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
@@ -186,27 +163,15 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 			_, _ = w.Write(data)
 			return
 		}
-
-		var result struct {
-			User struct {
-				Id        int     `json:"id"`
-				Email     string  `json:"email"`
-				CreatedAt string  `json:"createdAt"`
-				UpdatedAt string  `json:"updatedAt"`
-				Username  string  `json:"username"`
-				Bio       *string `json:"bio"`   // API requires this to be nullable
-				Image     *string `json:"image"` // API requires this to be nullable
-				Token     string  `json:"token"`
-			} `json:"user"`
+		user := conduit.User{
+			Id:        u.Id,
+			Email:     u.Email,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+			Username:  u.Username,
+			Token:     s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 		}
-		result.User.Id = u.Id
-		result.User.Email = u.Email
-		result.User.CreatedAt = u.CreatedAt.UTC().Format(s.dtfmt)
-		result.User.UpdatedAt = u.UpdatedAt.UTC().Format(s.dtfmt)
-		result.User.Username = u.Username
-		result.User.Token = s.tokenFactory.NewToken(24*time.Hour, u.Id, result.User.Username, result.User.Email, "authenticated")
-
-		data, err := json.Marshal(result)
+		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {
 			if s.debug {
 				log.Printf("createUser: %+v\n", err)
@@ -214,7 +179,6 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-
 		w.Header().Add("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
@@ -245,6 +209,48 @@ func (s *Server) handleGetArticles() http.HandlerFunc {
 			log.Printf("getArticles(%s)\n", r.URL.Path)
 		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleLogin() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req conduit.LoginUserRequest
+		err := jsonapi.Data(w, r, s.rejectUnknownFields, &req)
+		if err != nil {
+			log.Printf("login: %+v\n", err)
+			if errors.Is(err, jsonapi.ErrBadRequest) {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
+				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
+				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+			return
+		}
+		u, found := s.db.Login(req.User.Email, req.User.Password)
+		if !found {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		}
+		user := conduit.User{
+			Email:    u.Email,
+			Token:    s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Username: u.Username,
+			Bio:      u.Bio,
+			Image:    u.Image,
+		}
+		data, err := json.Marshal(conduit.UserResponse{User: user})
+		if err != nil {
+			if s.debug {
+				log.Printf("login: %+v\n", err)
+			}
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
 	}
 }
 

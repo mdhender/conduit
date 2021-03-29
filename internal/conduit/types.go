@@ -63,9 +63,12 @@ type Profile struct {
 }
 
 type User struct {
-	Email    string `json:"email"`           // "email": "jake@jake.jake"
-	Token    string `json:"token,omitempty"` // "token": "jwt.token.here"
-	Username string `json:"username"`        // "username": "jake"
-	Bio      string `json:"bio,omitempty"`   // "bio": "I work at statefarm"
-	Image    string `json:"image,omitempty"` // "image": null
+	Id        int     `json:"id"`
+	Email     string  `json:"email"`           // "email": "jake@jake.jake"
+	Username  string  `json:"username"`        // "username": "jake"
+	CreatedAt string  `json:"createdAt"`       // "createdAt": "2016-02-18T03:22:56.637Z",
+	UpdatedAt string  `json:"updatedAt"`       // "createdAt": "2016-02-18T03:22:56.637Z",
+	Token     string  `json:"token,omitempty"` // "token": "jwt.token.here"
+	Bio       *string `json:"bio"`             // "bio": "I work at statefarm" // API requires this to be nullable
+	Image     *string `json:"image"`           // "image": null // API requires this to be nullable
 }

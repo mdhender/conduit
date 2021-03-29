@@ -67,8 +67,8 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 	u.Username = username
 	u.Email = email
 	u.Password = password
-	u.CreatedAt = time.Now().UTC()
-	u.UpdatedAt = time.Now().UTC()
+	u.CreatedAt = time.Now().UTC().Format("2006-01-02T15:04:05.99999999Z")
+	u.UpdatedAt = time.Now().UTC().Format("2006-01-02T15:04:05.99999999Z")
 	s.users = append(s.users, u)
 
 	return u, nil
@@ -82,7 +82,21 @@ func (s *Store) GetUser(id int) (User, bool) {
 			return s.users[i], true
 		}
 	}
-	return User{Id: id}, false
+	return User{}, false
+}
+
+func (s *Store) Login(email, password string) (User, bool) {
+	s.Lock()
+	defer s.Unlock()
+	for i := range s.users {
+		if s.users[i].Email == email { // yeah, we know, timing attack
+			if s.users[i].Password != password {
+				break
+			}
+			return s.users[i], true
+		}
+	}
+	return User{}, false
 }
 
 type Store struct {
@@ -96,8 +110,8 @@ type User struct {
 	Username  string
 	Email     string
 	Password  string
-	Bio       string
-	Image     string
-	CreatedAt time.Time // "2021-03-27T16:58:01.233Z"
-	UpdatedAt time.Time // "2021-03-27T16:58:01.245Z"
+	CreatedAt string // "2021-03-27T16:58:01.233Z"
+	UpdatedAt string // "2021-03-27T16:58:01.245Z"
+	Bio       *string
+	Image     *string
 }

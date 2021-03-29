@@ -55,7 +55,7 @@ func (s *Server) routes() {
 		{"/api/user", "GET", s.authenticatedOnly(s.handleCurrentUser())},
 		{"/api/user", "PUT", s.handleNotImplemented()},
 		{"/api/users", "POST", s.handleCreateUser()},
-		{"/api/users/login", "POST", s.handleNotImplemented()},
+		{"/api/users/login", "POST", s.handleLogin()},
 	} {
 		s.router.HandleFunc(route.method, route.pattern, route.handler)
 	}
