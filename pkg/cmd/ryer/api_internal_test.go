@@ -136,7 +136,7 @@ func TestUsers(t *testing.T) {
 	//   { "user": { "email": "jake@jake.jake", "password": "jakejake" } }
 	srv = newServer()
 	loginUser := conduit.LoginUser{
-		Email: "jake@jake.jake",
+		Email:    "jake@jake.jake",
 		Password: "jakejake",
 	}
 	loginUserRequest := conduit.LoginUserRequest{User: loginUser}
