@@ -28,9 +28,9 @@ import (
 	"net/http"
 )
 
-// routes initializes all routes exposed by the server.
+// routes initializes all routes exposed by the Server.
 // routes are taken from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
-func (s *server) routes() {
+func (s *Server) routes() {
 	for _, route := range []struct {
 		pattern string
 		method  string

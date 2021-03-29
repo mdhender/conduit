@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-// Package main implements a Conduit server in the style of Mat Ryer's server.
+// Package main implements a Conduit Server in the style of Mat Ryer's Server.
 // (see https://pace.dev/blog/2018/05/09/how-I-write-http-services-after-eight-years.html)
 // (see https://svlapin.github.io/engineering/2019/09/14/go-patterns.html)
 package main
@@ -48,7 +48,7 @@ func main() {
 }
 
 func run(cfg *config) error {
-	s := &server{
+	s := &Server{
 		db:           memory.New(),
 		dtfmt:        cfg.Data.TimestampFormat,
 		router:       way.NewRouter(),
@@ -63,6 +63,6 @@ func run(cfg *config) error {
 
 	s.routes()
 
-	log.Printf("[server] listening on %s\n", s.Addr)
+	log.Printf("[Server] listening on %s\n", s.Addr)
 	return s.ListenAndServe()
 }

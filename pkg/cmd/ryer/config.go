@@ -81,7 +81,7 @@ func getConfig() (*config, error) {
 	cfg.Server.Key = "curry"
 
 	var (
-		fs                    = flag.NewFlagSet("server", flag.ExitOnError)
+		fs                    = flag.NewFlagSet("Server", flag.ExitOnError)
 		fileName              = fs.String("config", cfg.FileName, "config file (optional)")
 		debug                 = fs.Bool("debug", cfg.Debug, "log debug information (optional)")
 		dataPath              = fs.String("data-path", cfg.Data.Path, "path containing data files")

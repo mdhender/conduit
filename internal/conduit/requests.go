@@ -49,11 +49,13 @@ type CommentAddRequest struct {
 	} `json:"comment"`
 }
 
-type UserLoginRequest struct {
-	User struct {
-		Email    string `json:"string"`   // "email": "jake@jake.jake" // required
-		Password string `json:"password"` // "password": "jakejake" // required
-	} `json:"user"`
+type LoginUserRequest struct {
+	User LoginUser `json:"user"`
+}
+
+type LoginUser struct {
+	Email    string `json:"string"`   // "email": "jake@jake.jake" // required
+	Password string `json:"password"` // "password": "jakejake" // required
 }
 
 type NewUserRequest struct {

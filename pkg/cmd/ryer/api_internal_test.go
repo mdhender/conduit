@@ -52,9 +52,9 @@ func TestUser(t *testing.T) {
 
 	// Specification: User API
 
-	// When given a new server
-	srv = newServer()
+	// When given a new Server
 	// And the request is GET /api/user with no bearer token
+	srv = newServer()
 	req := request("GET", "/api/user", nil)
 	// Then executing the request should fail with status of 401 (not authorized)
 	w := httptest.NewRecorder()
@@ -63,9 +63,9 @@ func TestUser(t *testing.T) {
 		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
 	}
 
-	// When given a new server
-	srv = newServer()
+	// When given a new Server
 	// And the request is GET /api/user with a valid bearer token
+	srv = newServer()
 	req = httptest.NewRequest("GET", "/api/user", nil)
 	req = request("GET", "/api/user", nil, contentType, validBearerToken)
 	// Then executing the request should success with status of 200 (OK)
@@ -75,9 +75,9 @@ func TestUser(t *testing.T) {
 		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusOK, w.Code)
 	}
 
-	// When given a new server
-	srv = newServer()
+	// When given a new Server
 	// And the request is GET /api/user with an expired bearer token
+	srv = newServer()
 	req = httptest.NewRequest("GET", "/api/user", nil)
 	req = request("GET", "/api/user", nil, contentType, expiredBearerToken)
 	// Then executing the request should fail with status of 401 (not authorized)
@@ -94,9 +94,9 @@ func TestUsers(t *testing.T) {
 
 	// Specification: Users API
 
-	// When given a new server
-	srv := newServer()
+	// When given a new Server
 	// And the request is POST /api/users with a valid user request with no Content-Type header
+	srv := newServer()
 	req := request("POST", "/api/users", validUserRequest)
 	// Then executing the request should succeed with status of 200 (OK)
 	w := httptest.NewRecorder()
@@ -105,9 +105,9 @@ func TestUsers(t *testing.T) {
 		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnsupportedMediaType, w.Code)
 	}
 
-	// When given a new server
-	srv = newServer()
+	// When given a new Server
 	// And the request is POST /api/users with a valid user request and Content-Type
+	srv = newServer()
 	req = request("POST", "/api/users", validUserRequest, contentType)
 	// Then executing the request should succeed with status of 200 (OK)
 	w = httptest.NewRecorder()
@@ -128,6 +128,34 @@ func TestUsers(t *testing.T) {
 			}
 		}
 	}
+
+	// When given a new Server
+	// And the request is POST /api/users/login
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is a LoginUserRequest with the values
+	//   { "user": { "email": "jake@jake.jake", "password": "jakejake" } }
+	srv = newServer()
+	loginUser := conduit.LoginUser{
+		Email: "jake@jake.jake",
+		Password: "jakejake",
+	}
+	loginUserRequest := conduit.LoginUserRequest{User: loginUser}
+	req = request("POST", "/api/users/login", loginUserRequest, contentType)
+	// Then executing the request should fail with status of 401 (not authorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given a new Server
+	// And the request is POST /api/users/login
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request body is
+	//   { "user":{
+	//	     "email": "jake@jake.jake",
+	//		 "password": "jakejake" }}
+	// Then executing the request should succeed with status of 200 (OK)
 }
 
 type keyValue struct {
@@ -175,8 +203,8 @@ func jsonReader(v interface{}) io.Reader {
 	return bytes.NewReader(buf)
 }
 
-func newServer() *server {
-	srv := &server{
+func newServer() *Server {
+	srv := &Server{
 		db:           memory.New(),
 		dtfmt:        "2006-01-02T15:04:05.99999999Z",
 		router:       way.NewRouter(),

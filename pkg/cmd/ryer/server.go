@@ -38,7 +38,7 @@ import (
 	"github.com/mdhender/conduit/internal/way"
 )
 
-type server struct {
+type Server struct {
 	http.Server
 	debug               bool
 	router              *way.Router
@@ -48,11 +48,29 @@ type server struct {
 	rejectUnknownFields bool
 }
 
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// NewServer returns a Server with default values
+func NewServer(secret string) *Server {
+	srv := &Server{
+		db:           memory.New(),
+		dtfmt:        "2006-01-02T15:04:05.99999999Z",
+		router:       way.NewRouter(),
+		tokenFactory: jwt.NewFactory(secret),
+	}
+	srv.MaxHeaderBytes = 1 << 20
+	srv.Handler = srv.router
+	srv.routes()
+	return srv
+}
+
+func (s *Server) NewJWT(duration time.Duration, id int, username, email string, roles ...string) string {
+	return s.tokenFactory.NewToken(duration, id, username, email, roles...)
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
+func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.currentUser(r).IsAdmin {
 			if s.debug {
@@ -65,7 +83,7 @@ func (s *server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
+func (s *Server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.currentUser(r).IsAuthenticated {
 			if s.debug {
@@ -78,7 +96,7 @@ func (s *server) authenticatedOnly(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *server) handleCurrentUser() http.HandlerFunc {
+func (s *Server) handleCurrentUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("currentUser\n")
@@ -125,7 +143,7 @@ func (s *server) handleCurrentUser() http.HandlerFunc {
 
 // post body should contain a NewUserRequest which wraps a NewUser
 // Returns a UserResponse which wraps a User
-func (s *server) handleCreateUser() http.HandlerFunc {
+func (s *Server) handleCreateUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("createUser\n")
@@ -203,7 +221,7 @@ func (s *server) handleCreateUser() http.HandlerFunc {
 	}
 }
 
-func (s *server) getArticlesFeed() http.HandlerFunc {
+func (s *Server) getArticlesFeed() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("getArticlesFeed(%s)\n", r.URL.Path)
@@ -212,7 +230,7 @@ func (s *server) getArticlesFeed() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleAdminIndex() http.HandlerFunc {
+func (s *Server) handleAdminIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("adminIndex(%s)\n", r.URL.Path)
@@ -221,7 +239,7 @@ func (s *server) handleAdminIndex() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleGetArticles() http.HandlerFunc {
+func (s *Server) handleGetArticles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("getArticles(%s)\n", r.URL.Path)
@@ -230,7 +248,7 @@ func (s *server) handleGetArticles() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleNotFound() http.HandlerFunc {
+func (s *Server) handleNotFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("%s: not found\n", r.URL.Path)
@@ -239,7 +257,7 @@ func (s *server) handleNotFound() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleNotImplemented() http.HandlerFunc {
+func (s *Server) handleNotImplemented() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
 			log.Printf("%s: not implemented\n", r.URL.Path)
@@ -248,7 +266,7 @@ func (s *server) handleNotImplemented() http.HandlerFunc {
 	}
 }
 
-func (s *server) currentUser(r *http.Request) (user struct {
+func (s *Server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
 	User            memory.User
