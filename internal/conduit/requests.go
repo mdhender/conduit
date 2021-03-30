@@ -68,12 +68,14 @@ type NewUser struct {
 	Username string `json:"username"` // "username": "Jacob" // required
 }
 
-type UserUpdateRequest struct {
-	User struct {
-		Bio      string `json:"bio"`      // "bio": "I like to skateboard" // optional
-		Email    string `json:"email"`    // "email": "jake@jake.jake" // optional
-		Image    string `json:"image"`    // "image": "https://i.stack.imgur.com/xHWG8.jpg" // optional
-		Password string `json:"password"` // "password": "jakejake" // optional
-		Username string `json:"username"` // "username": "Jacob" // optional
-	} `json:"user"`
+type UpdateUserRequest struct {
+	User UpdateUser `json:"user"`
+}
+
+type UpdateUser struct {
+	Email    string `json:"email"`    // "email": "jake@jake.jake" // required
+	Token    string `json:"token"`    // "token": "...." // required
+	Username string `json:"username"` // "username": "Jacob" // optional
+	Bio      string `json:"bio"`      // "bio": "I like to skateboard" // optional
+	Image    string `json:"image"`    // "image": "https://i.stack.imgur.com/xHWG8.jpg" // optional
 }
