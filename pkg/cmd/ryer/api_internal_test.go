@@ -179,7 +179,8 @@ func TestUser(t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// And the request body is an UpdateUserRequest with the values
 	//   { "user":{ "email": "jake@jake.jake", "bio": "I like to skateboard", "image": "https://i.stack.imgur.com/xHWG8.jpg" } }
-	updateUser := conduit.UpdateUser{Email: "jake@jake.jake", Bio: "I like to skateboard", Image: "https://i.stack.imgur.com/xHWG8.jpg"}
+	email, bio, image := "jake@jake.jake", "I like to skateboard", "https://i.stack.imgur.com/xHWG8.jpg"
+	updateUser := conduit.UpdateUser{Email: &email, Bio: &bio, Image: &image}
 	req = request("PUT", "/api/user", conduit.UpdateUserRequest{User: updateUser}, contentType, validBearerToken)
 	// Then executing the request should succeed with status of 200 (ok)
 	w = httptest.NewRecorder()
@@ -195,18 +196,18 @@ func TestUser(t *testing.T) {
 			if userResponse.User.Username != "Jacob" {
 				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, "Jacob", userResponse.User.Username)
 			}
-			if userResponse.User.Email != updateUser.Email {
-				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, updateUser.Email, userResponse.User.Email)
+			if userResponse.User.Email != email {
+				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, email, userResponse.User.Email)
 			}
 			if userResponse.User.Bio == nil {
-				t.Errorf("api: %q %q bio expected %q: got nil\n", req.Method, req.URL.Path, updateUser.Bio)
-			} else if *userResponse.User.Bio != updateUser.Bio {
-				t.Errorf("api: %q %q bio expected %q: got %q\n", req.Method, req.URL.Path, updateUser.Bio, *userResponse.User.Bio)
+				t.Errorf("api: %q %q bio expected %q: got nil\n", req.Method, req.URL.Path, bio)
+			} else if *userResponse.User.Bio != bio {
+				t.Errorf("api: %q %q bio expected %q: got %q\n", req.Method, req.URL.Path, bio, *userResponse.User.Bio)
 			}
 			if userResponse.User.Image == nil {
-				t.Errorf("api: %q %q image expected %q: got nil\n", req.Method, req.URL.Path, updateUser.Image)
-			} else if *userResponse.User.Bio != updateUser.Bio {
-				t.Errorf("api: %q %q image expected %q: got %q\n", req.Method, req.URL.Path, updateUser.Image, *userResponse.User.Image)
+				t.Errorf("api: %q %q image expected %q: got nil\n", req.Method, req.URL.Path, image)
+			} else if *userResponse.User.Image != image {
+				t.Errorf("api: %q %q image expected %q: got %q\n", req.Method, req.URL.Path, image, *userResponse.User.Image)
 			}
 		}
 	}

@@ -99,6 +99,48 @@ func (s *Store) Login(email, password string) (User, bool) {
 	return User{}, false
 }
 
+func (s *Store) UpdateUser(id int, email, bio, image *string) (User, map[string][]string) {
+	s.Lock()
+	defer s.Unlock()
+	errs := make(map[string][]string)
+	for i := range s.users {
+		if s.users[i].Id == id {
+			u := s.users[i]
+			changes := false
+			if bio != nil {
+				val := strings.TrimSpace(*bio)
+				u.Bio = &val
+				changes = true
+			}
+			if email != nil {
+				val := strings.TrimSpace(*email)
+				if *email != val {
+					errs["email"] = append(errs["email"], "can't have leading or trailing spaces")
+				} else if val == "" {
+					errs["email"] = append(errs["email"], "must not be empty if provided")
+				} else {
+					u.Email = val
+					changes = true
+				}
+			}
+			if image != nil {
+				val := strings.TrimSpace(*image)
+				u.Image = &val
+				changes = true
+			}
+			if len(errs) != 0 {
+				return User{}, errs
+			}
+			if changes {
+				s.users[i] = u
+			}
+			return u, nil
+		}
+	}
+	errs["email"] = append(errs["email"], "no such email")
+	return User{}, errs
+}
+
 type Store struct {
 	sync.RWMutex
 	seq   int

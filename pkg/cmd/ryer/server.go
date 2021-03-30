@@ -272,6 +272,66 @@ func (s *Server) handleNotImplemented() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("updateCurrentUser\n")
+		cu := s.currentUser(r).User
+
+		var req conduit.UpdateUserRequest
+		err := jsonapi.Data(w, r, s.rejectUnknownFields, &req)
+		if err != nil {
+			log.Printf("updateCurrentUser: %+v\n", err)
+			if errors.Is(err, jsonapi.ErrBadRequest) {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
+				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
+				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+			return
+		}
+		log.Println(req)
+		u, errs := s.db.UpdateUser(cu.Id, req.User.Email, req.User.Bio, req.User.Image)
+		if errs != nil {
+			w.Header().Add("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			var result struct {
+				Errors map[string][]string `json:"errors"`
+			}
+			result.Errors = errs
+			data, err := json.Marshal(result)
+			if err != nil {
+				log.Printf("updateCurrentUser: %+v\n", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			_, _ = w.Write(data)
+			return
+		}
+		user := conduit.User{
+			Id:        u.Id,
+			Email:     u.Email,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+			Username:  u.Username,
+			Token:     s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+		}
+		data, err := json.Marshal(conduit.UserResponse{User: user})
+		if err != nil {
+			if s.debug {
+				log.Printf("createUser: %+v\n", err)
+			}
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}
+}
+
 func (s *Server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool

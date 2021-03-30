@@ -73,9 +73,9 @@ type UpdateUserRequest struct {
 }
 
 type UpdateUser struct {
-	Email    string `json:"email"`    // "email": "jake@jake.jake" // required
-	Token    string `json:"token"`    // "token": "...." // required
-	Username string `json:"username"` // "username": "Jacob" // optional
-	Bio      string `json:"bio"`      // "bio": "I like to skateboard" // optional
-	Image    string `json:"image"`    // "image": "https://i.stack.imgur.com/xHWG8.jpg" // optional
+	Email    *string `json:"email"`    // "email": "jake@jake.jake" // optional and nullable
+	Token    string  `json:"token"`    // "token": "...." // required but ignored
+	Username string  `json:"username"` // "username": "Jacob" // optional and ignored
+	Bio      *string `json:"bio"`      // "bio": "I like to skateboard" // optional and nullable
+	Image    *string `json:"image"`    // "image": "https://i.stack.imgur.com/xHWG8.jpg" // optional and nullable
 }

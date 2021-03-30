@@ -53,7 +53,7 @@ func (s *Server) routes() {
 		{"/api/profiles/:username/follow", "POST", s.handleNotImplemented()},
 		{"/api/tags", "GET", s.handleNotImplemented()},
 		{"/api/user", "GET", s.authenticatedOnly(s.handleCurrentUser())},
-		{"/api/user", "PUT", s.handleNotImplemented()},
+		{"/api/user", "PUT", s.authenticatedOnly(s.handleUpdateCurrentUser())},
 		{"/api/users", "POST", s.handleCreateUser()},
 		{"/api/users/login", "POST", s.handleLogin()},
 	} {

@@ -43,11 +43,16 @@ type CommentsResponse struct {
 	Comments []Comment `json:"comments"`
 }
 
+type GenericErrorModel struct {
+	Errors ErrorResponse `json:"errors"`
+}
+
 // If a request fails any validations, expect a 422 and errors in the following format:
 type ErrorResponse struct {
-	Errors struct {
-		Body []string `json:"body"`
-	} `json:"errors"`
+	Body     []string `json:"body,omitempty"`
+	Email    []string `json:"email,omitempty"`
+	Password []string `json:"password,omitempty"`
+	Username []string `json:"username,omitempty"`
 }
 
 type ProfileResponse struct {
