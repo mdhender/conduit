@@ -34,6 +34,7 @@ package tests
 
 import (
 	"net/http"
+	"testing"
 	"time"
 )
 
@@ -49,3 +50,12 @@ type keyValue struct {
 }
 
 var contentType = keyValue{"Content-Type", "application/json; charset=utf-8"}
+var secret = "salt+pepper"
+
+func Suite(newServer TestServer, t *testing.T) {
+	Registration(newServer, t)
+	Authentication(newServer, t)
+	User(newServer, t)
+	Users(newServer, t)
+	Profile(newServer, t)
+}

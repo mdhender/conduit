@@ -28,9 +28,9 @@ import (
 	"net/http"
 )
 
-// routes initializes all routes exposed by the Server.
-// routes are taken from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
-func (s *Server) routes() {
+// Routes initializes all routes exposed by the Server.
+// Routes are taken from https://github.com/gothinkster/realworld/blob/9686244365bf5681e27e2e9ea59a4d905d8080db/api/swagger.json
+func (s *Server) Routes() {
 	for _, route := range []struct {
 		pattern string
 		method  string
@@ -57,7 +57,7 @@ func (s *Server) routes() {
 		{"/api/users", "POST", s.handleCreateUser()},
 		{"/api/users/login", "POST", s.handleLogin()},
 	} {
-		s.router.HandleFunc(route.method, route.pattern, route.handler)
+		s.Router.HandleFunc(route.method, route.pattern, route.handler)
 	}
-	s.router.NotFound = s.handleNotFound()
+	s.Router.NotFound = s.handleNotFound()
 }

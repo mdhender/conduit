@@ -45,34 +45,34 @@ import (
 
 type Server struct {
 	http.Server
+	DB                  *memory.Store
+	DtFmt               string // format string for timestamps in responses
+	Router              *way.Router
+	TokenFactory        jwt.Factory
 	debug               bool
-	router              *way.Router
-	tokenFactory        jwt.Factory
-	db                  *memory.Store
-	dtfmt               string // format string for timestamps in responses
 	rejectUnknownFields bool
 }
 
 // NewServer returns a Server with default values
 func NewServer(secret string) *Server {
 	srv := &Server{
-		db:           memory.New(),
-		dtfmt:        "2006-01-02T15:04:05.99999999Z",
-		router:       way.NewRouter(),
-		tokenFactory: jwt.NewFactory(secret),
+		DB:           memory.New(),
+		DtFmt:        "2006-01-02T15:04:05.99999999Z",
+		Router:       way.NewRouter(),
+		TokenFactory: jwt.NewFactory(secret),
 	}
 	srv.MaxHeaderBytes = 1 << 20
-	srv.Handler = srv.router
-	srv.routes()
+	srv.Handler = srv.Router
+	srv.Routes()
 	return srv
 }
 
 func (s *Server) NewJWT(ttl time.Duration, id int, username, email string, roles ...string) string {
-	return s.tokenFactory.NewToken(ttl, id, username, email, roles...)
+	return s.TokenFactory.NewToken(ttl, id, username, email, roles...)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
+	s.Router.ServeHTTP(w, r)
 }
 
 func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
@@ -106,7 +106,7 @@ func (s *Server) handleCurrentUser() http.HandlerFunc {
 		u := s.currentUser(r).User
 		user := conduit.User{
 			Email:    u.Email,
-			Token:    s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Token:    s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 			Username: u.Username,
 			Bio:      u.Bio,
 			Image:    u.Image,
@@ -149,7 +149,7 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 			return
 		}
 
-		u, errs := s.db.CreateUser(req.User.Username, req.User.Email, req.User.Password)
+		u, errs := s.DB.CreateUser(req.User.Username, req.User.Email, req.User.Password)
 		if errs != nil {
 			w.Header().Add("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusUnprocessableEntity)
@@ -174,7 +174,7 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 			Username:  u.Username,
-			Token:     s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Token:     s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 		}
 		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {
@@ -234,13 +234,13 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			}
 			return
 		}
-		u, found := s.db.Login(req.User.Email, req.User.Password)
+		u, found := s.DB.Login(req.User.Email, req.User.Password)
 		if !found {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		}
 		user := conduit.User{
 			Email:    u.Email,
-			Token:    s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Token:    s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 			Username: u.Username,
 			Bio:      u.Bio,
 			Image:    u.Image,
@@ -298,7 +298,7 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 			return
 		}
 		log.Println(req)
-		u, errs := s.db.UpdateUser(cu.Id, req.User.Email, req.User.Bio, req.User.Image)
+		u, errs := s.DB.UpdateUser(cu.Id, req.User.Email, req.User.Bio, req.User.Image)
 		if errs != nil {
 			w.Header().Add("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusUnprocessableEntity)
@@ -321,7 +321,7 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 			Username:  u.Username,
-			Token:     s.tokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
+			Token:     s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 		}
 		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {
@@ -345,12 +345,12 @@ func (s *Server) currentUser(r *http.Request) (user struct {
 	j, err := jwt.GetBearerToken(r)
 	if err != nil {
 		return user
-	} else if err = s.tokenFactory.Validate(j); err != nil {
+	} else if err = s.TokenFactory.Validate(j); err != nil {
 		return user
 	} else if !j.IsValid() {
 		return user
 	}
-	user.User, _ = s.db.GetUser(j.Data().Id)
+	user.User, _ = s.DB.GetUser(j.Data().Id)
 	for _, role := range j.Data().Roles {
 		switch role {
 		case "admin":

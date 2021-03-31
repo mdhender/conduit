@@ -30,6 +30,7 @@ package main
 import (
 	"github.com/mdhender/conduit/internal/config"
 	"github.com/mdhender/conduit/internal/jwt"
+	server "github.com/mdhender/conduit/internal/servers/ryer"
 	"github.com/mdhender/conduit/internal/store/memory"
 	"github.com/mdhender/conduit/internal/way"
 	"log"
@@ -54,20 +55,20 @@ func main() {
 }
 
 func run(cfg *config.Config) error {
-	s := &Server{
-		db:           memory.New(),
-		dtfmt:        cfg.App.TimestampFormat,
-		router:       way.NewRouter(),
-		tokenFactory: jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key),
+	s := &server.Server{
+		DB:           memory.New(),
+		DtFmt:        cfg.App.TimestampFormat,
+		Router:       way.NewRouter(),
+		TokenFactory: jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key),
 	}
 	s.Addr = net.JoinHostPort(cfg.Server.Host, cfg.Server.Port)
 	s.IdleTimeout = cfg.Server.Timeout.Idle
 	s.ReadTimeout = cfg.Server.Timeout.Read
 	s.WriteTimeout = cfg.Server.Timeout.Write
 	s.MaxHeaderBytes = 1 << 20
-	s.Handler = s.router
+	s.Handler = s.Router
 
-	s.routes()
+	s.Routes()
 
 	log.Printf("[server] listening on %s\n", s.Addr)
 	return s.ListenAndServe()
