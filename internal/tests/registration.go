@@ -34,35 +34,37 @@ import (
 func Registration(newServer TestServer, t *testing.T) {
 	// Specification: Registration API
 
-	// When given a new Server
+	// Given a new server
 	// And the request is POST /api/users
 	// And the request content type header is "application/json; charset=utf-8"
 	// And the request body is a NewUserRequest with the values
 	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid UserResponse with a valid User
+	// And the User email should be "jake@jake.jake"
 	srv := newServer(secret)
 	newUser := conduit.NewUser{Username: "Jacob", Email: "jake@jake.jake", Password: "jakejake"}
 	req := request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, contentType)
-	// Then executing the request should succeed with status of 200 (ok)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusOK, http.StatusText(http.StatusOK), w.Code, http.StatusText(w.Code))
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("registration: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
 	} else {
-		// And return a valid User
 		var userResponse conduit.UserResponse
 		if err := fetch(w.Result().Body, &userResponse); err != nil {
-			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+			t.Errorf("registration: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
 		} else {
-			if userResponse.User.Email != newUser.Email {
-				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, newUser.Email, userResponse.User.Username)
+			if expected := newUser.Email; userResponse.User.Email != expected {
+				t.Errorf("registration: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Username)
 			}
-			if userResponse.User.Username != newUser.Username {
-				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, newUser.Username, userResponse.User.Username)
+			if expected := newUser.Username; userResponse.User.Username != expected {
+				t.Errorf("registration: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Username)
 			}
 		}
 	}
 
-	// When given the prior Server
+	// Given the prior server
 	// And the request content type header is "application/json; charset=utf-8"
 	// And the request body is a NewUserRequest with the values
 	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
@@ -70,20 +72,20 @@ func Registration(newServer TestServer, t *testing.T) {
 	// Then executing the request should fail with status of 422 (unprocessable entity)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity), w.Code, http.StatusText(w.Code))
+	if expected := http.StatusUnprocessableEntity; w.Code != expected {
+		t.Errorf("registration: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
 	}
 
 	// When given the prior Server
 	// And the request content type header is "text/plain"
 	// And the request body is a NewUserRequest with the values
 	//   { "user": { "username": "Jacob", "email": "jake@jake.jake", "password": "jakejake" } }
-	srv = newServer(secret)
+	// When we execute the request
+	// Then the response should have a status of 422 (unprocessable entity)
 	req = request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, keyValue{key: "Content-Type", value: "text/plain"})
-	// Then executing the request should fail with status of 422 (unprocessable entity)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnsupportedMediaType {
-		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusUnsupportedMediaType, http.StatusText(http.StatusUnsupportedMediaType), w.Code, http.StatusText(w.Code))
+	if expected := http.StatusUnsupportedMediaType; w.Code != expected {
+		t.Errorf("registration: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
 	}
 }

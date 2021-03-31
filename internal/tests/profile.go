@@ -45,7 +45,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request content type header is "application/json; charset=utf-8"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
 	srv = newServer(secret)
@@ -77,7 +77,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
 	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)
@@ -104,7 +104,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be true
 	req = request("POST", "/api/profiles/Anne/follow", nil, validBearerToken)
@@ -131,7 +131,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be true
 	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)
@@ -158,7 +158,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
 	req = request("DELETE", "/api/profiles/Anne/follow", nil, validBearerToken)
@@ -185,7 +185,7 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile
+	// And contain a valid ProfileResponse with a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
 	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)

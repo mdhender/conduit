@@ -56,6 +56,5 @@ func Suite(newServer TestServer, t *testing.T) {
 	Registration(newServer, t)
 	Authentication(newServer, t)
 	User(newServer, t)
-	Users(newServer, t)
 	Profile(newServer, t)
 }
