@@ -56,10 +56,10 @@ type Comment struct {
 }
 
 type Profile struct {
-	Username  string `json:"username"`  // "username": "jake"
-	Bio       string `json:"bio"`       // "bio": "I work at statefarm"
-	Image     string `json:"image"`     // "image": "https://static.productionready.io/images/smiley-cyrus.jpg"
-	Following bool   `json:"following"` // "following": false
+	Username  string  `json:"username"`  // "username": "jake"
+	Bio       *string `json:"bio"`       // "bio": "I work at statefarm"
+	Image     *string `json:"image"`     // "image": "https://static.productionready.io/images/smiley-cyrus.jpg"
+	Following bool    `json:"following"` // "following": false
 }
 
 type User struct {

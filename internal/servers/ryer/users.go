@@ -118,9 +118,10 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			}
 			return
 		}
-		u, found := s.DB.Login(req.User.Email, req.User.Password)
-		if !found {
+		u, err := s.DB.Login(req.User.Email, req.User.Password)
+		if err != nil {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
 		}
 		user := conduit.User{
 			Email:    u.Email,

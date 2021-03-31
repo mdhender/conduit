@@ -32,12 +32,46 @@ import (
 	"net/http"
 )
 
+func (s *Server) handleFollowUserByUsername() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cu := s.currentUser(r).User
+
+		username := way.Param(r.Context(), "username")
+		profile, err := s.DB.FollowUserByUsername(cu.Id, username)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		data, err := json.Marshal(conduit.ProfileResponse{Profile: conduit.Profile{
+			Bio:       profile.Bio,
+			Following: profile.Following,
+			Image:     profile.Image,
+			Username:  profile.Username,
+		}})
+		if err != nil {
+			log.Printf("followUserByUsername: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}
+}
+
 func (s *Server) handleGetProfileByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("getProfileByUsername")
+		// client doesn't have to be authenticated, but if she is,
+		// we will fetch the following flag for her.
+		var userId int
+		if cu := s.currentUser(r).User; cu != nil {
+			userId = cu.Id
+		}
+
 		username := way.Param(r.Context(), "username")
-		profile, ok := s.DB.GetProfileByUsername(0, username)
-		if !ok {
+		profile, err := s.DB.GetProfileByUsername(userId, username)
+		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
@@ -52,6 +86,7 @@ func (s *Server) handleGetProfileByUsername() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
+
 		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)

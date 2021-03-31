@@ -37,7 +37,7 @@ import (
 func (s *Server) currentUser(r *http.Request) (user struct {
 	IsAdmin         bool
 	IsAuthenticated bool
-	User            memory.User
+	User            *memory.User
 }) {
 	j, err := jwt.GetBearerToken(r)
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *Server) currentUser(r *http.Request) (user struct {
 	} else if !j.IsValid() {
 		return user
 	}
-	user.User, _ = s.DB.GetUser(j.Data().Id)
+	user.User, err = s.DB.GetUser(j.Data().Id)
 	for _, role := range j.Data().Roles {
 		switch role {
 		case "admin":

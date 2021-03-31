@@ -36,13 +36,13 @@ import (
 
 func (s *Server) handleCurrentUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u := s.currentUser(r).User
-		user := conduit.User{
-			Email:    u.Email,
-			Token:    s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
-			Username: u.Username,
-			Bio:      u.Bio,
-			Image:    u.Image,
+		user := conduit.User{}
+		if u := s.currentUser(r).User; u != nil {
+			user.Email = u.Email
+			user.Token = s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated")
+			user.Username = u.Username
+			user.Bio = u.Bio
+			user.Image = u.Image
 		}
 		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {

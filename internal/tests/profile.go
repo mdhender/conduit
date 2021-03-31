@@ -94,7 +94,7 @@ func Profile(newServer TestServer, t *testing.T) {
 			if expected := "Anne"; profileResponse.Profile.Username != expected {
 				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
 			}
-			if expected := true; profileResponse.Profile.Following != expected {
+			if expected := false; profileResponse.Profile.Following != expected {
 				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
 			}
 		}
@@ -103,12 +103,30 @@ func Profile(newServer TestServer, t *testing.T) {
 	// Given the prior Server
 	// And the request is POST /api/profiles/Anne/follow
 	// And the request content type header is "application/json; charset=utf-8"
-	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile with the username of "Anne"
-	t.Errorf("POST /api/profiles/Anne/follow !implemented")
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be true
+	req = request("POST", "/api/profiles/Anne/follow", nil, contentType, validBearerToken)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := true; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
 
 	// Given the prior Server
 	// And the request is GET /api/profiles/Anne
