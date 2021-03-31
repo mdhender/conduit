@@ -35,11 +35,11 @@ import (
 func TestApi(t *testing.T) {
 	testServer := func(secret string) tests.Server {
 		srv := &Server{
-			DB:           memory.New(),
 			DtFmt:        "2006-01-02T15:04:05.99999999Z",
 			Router:       way.NewRouter(),
 			TokenFactory: jwt.NewFactory(secret),
 		}
+		srv.DB, _ = memory.New()
 		srv.Handler = srv.Router
 		srv.Routes()
 		return srv

@@ -22,42 +22,27 @@
  * SOFTWARE.
  */
 
-package ryer
+// Package model defines the types that we expect our stores to return.
+// We don't care about their internal details; only what this model needs.
+package model
 
-import (
-	"github.com/mdhender/conduit/internal/jwt"
-	"github.com/mdhender/conduit/internal/store/model"
-	"net/http"
-)
+type Profile struct {
+	Id         int
+	Username   string
+	Bio        *string
+	Image      *string
+	Following  bool
+	bio, image string
+}
 
-// currentUser extracts data for the user making the request.
-// It always returns a user struct, even if the request does
-// not have a valid bearer token.
-// TODO: should return a Conduit User.
-func (s *Server) currentUser(r *http.Request) (user struct {
-	IsAdmin         bool
-	IsAuthenticated bool
-	User            *model.User
-}) {
-	j, err := jwt.GetBearerToken(r)
-	if err != nil {
-		//log.Printf("currentUser: bearerToken %v\n", j)
-		//log.Printf("currentUser: getBearerToken %+v\n", err)
-		return user
-	} else if err = s.TokenFactory.Validate(j); err != nil {
-		//log.Printf("currentUser: validateToken %+v\n", err)
-		return user
-	} else if !j.IsValid() {
-		return user
-	}
-	user.User, err = s.DB.GetUser(j.Data().Id)
-	for _, role := range j.Data().Roles {
-		switch role {
-		case "admin":
-			user.IsAdmin = true
-		case "authenticated":
-			user.IsAuthenticated = true
-		}
-	}
-	return user
+type User struct {
+	Id        int
+	Username  string
+	Email     string
+	Password  string
+	CreatedAt string // "2021-03-27T16:58:01.233Z"
+	UpdatedAt string // "2021-03-27T16:58:01.245Z"
+	Bio       *string
+	Image     *string
+	Following []string // list of usernames being followed
 }

@@ -22,42 +22,48 @@
  * SOFTWARE.
  */
 
-package ryer
+// Package postgres implements a make-believe connection to an external database
+package postgres
 
 import (
-	"github.com/mdhender/conduit/internal/jwt"
+	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/mdhender/conduit/internal/store/model"
-	"net/http"
 )
 
-// currentUser extracts data for the user making the request.
-// It always returns a user struct, even if the request does
-// not have a valid bearer token.
-// TODO: should return a Conduit User.
-func (s *Server) currentUser(r *http.Request) (user struct {
-	IsAdmin         bool
-	IsAuthenticated bool
-	User            *model.User
-}) {
-	j, err := jwt.GetBearerToken(r)
+var ErrNotFound = errors.New("not found")
+
+type Store struct {
+	pg *sql.DB
+}
+
+func New(user, password, host string) (*Store, error) {
+	db := &Store{}
+	var err error
+	db.pg, err = sql.Open("postgres", fmt.Sprintf("user=%s password=%s dbname=%s sslmode=verify-full", user, password, host))
 	if err != nil {
-		//log.Printf("currentUser: bearerToken %v\n", j)
-		//log.Printf("currentUser: getBearerToken %+v\n", err)
-		return user
-	} else if err = s.TokenFactory.Validate(j); err != nil {
-		//log.Printf("currentUser: validateToken %+v\n", err)
-		return user
-	} else if !j.IsValid() {
-		return user
+		return nil, err
 	}
-	user.User, err = s.DB.GetUser(j.Data().Id)
-	for _, role := range j.Data().Roles {
-		switch role {
-		case "admin":
-			user.IsAdmin = true
-		case "authenticated":
-			user.IsAuthenticated = true
+
+	return db, nil
+}
+
+func (db *Store) GetUser(id int) (*model.User, error) {
+	row := db.pg.QueryRow(`SELECT USERNAME, EMAIL FROM USERS WHERE ID = $1`, id)
+	var username, email string
+	err := row.Scan(&username, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		} else {
+			return nil, err
 		}
 	}
-	return user
+
+	return &model.User{
+		Id:       id,
+		Username: username,
+		Email:    email,
+	}, nil
 }

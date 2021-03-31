@@ -27,6 +27,7 @@ package memory
 
 import (
 	"errors"
+	"github.com/mdhender/conduit/internal/store/model"
 	"strings"
 	"sync"
 	"time"
@@ -35,15 +36,15 @@ import (
 var ErrNotAuthorized = errors.New("not authorized")
 var ErrNotFound = errors.New("not found")
 
-func New() *Store {
+func New() (*Store, error) {
 	db := &Store{}
 	db.users.email = make(map[string]*User)
 	db.users.id = make(map[int]*User)
 	db.users.name = make(map[string]*User)
-	return db
+	return db, nil
 }
 
-func (db *Store) CreateUser(username, email, password string) (*User, map[string][]string) {
+func (db *Store) CreateUser(username, email, password string) (*model.User, map[string][]string) {
 	db.Lock()
 	defer db.Unlock()
 	errs := make(map[string][]string)
@@ -74,16 +75,16 @@ func (db *Store) CreateUser(username, email, password string) (*User, map[string
 		Password:  password,
 		CreatedAt: time.Now().UTC().Format("2006-01-02T15:04:05.99999999Z"),
 		UpdatedAt: time.Now().UTC().Format("2006-01-02T15:04:05.99999999Z"),
-		Following: make(map[int]bool),
+		Following: make(map[int]*User),
 	}
 	db.users.id[u.Id] = u
 	db.users.name[u.Username] = u
 	db.users.email[u.Email] = u
 
-	return u.Copy(), nil
+	return u.AsModelUser(), nil
 }
 
-func (db *Store) FollowUserByUsername(id int, username string) (*Profile, error) {
+func (db *Store) FollowUserByUsername(id int, username string) (*model.Profile, error) {
 	db.Lock()
 	defer db.Unlock()
 
@@ -98,12 +99,12 @@ func (db *Store) FollowUserByUsername(id int, username string) (*Profile, error)
 	if target == nil {
 		return nil, ErrNotFound
 	}
-	user.Following[target.Id] = true
+	user.Following[target.Id] = target
 
-	return target.Profile(user), nil
+	return target.AsModelProfile(user), nil
 }
 
-func (db *Store) GetProfileByUsername(id int, username string) (*Profile, error) {
+func (db *Store) GetProfileByUsername(id int, username string) (*model.Profile, error) {
 	db.Lock()
 	defer db.Unlock()
 
@@ -113,15 +114,13 @@ func (db *Store) GetProfileByUsername(id int, username string) (*Profile, error)
 		return nil, ErrNotFound
 	}
 
-	profile := target.Profile(user)
-	if user != nil {
-		profile.Following = user.Following[target.Id]
-	}
+	profile := target.AsModelProfile(user)
+	profile.Following = user != nil && user.Following[target.Id] != nil
 
 	return profile, nil
 }
 
-func (db *Store) GetUser(id int) (*User, error) {
+func (db *Store) GetUser(id int) (*model.User, error) {
 	db.Lock()
 	defer db.Unlock()
 
@@ -129,20 +128,20 @@ func (db *Store) GetUser(id int) (*User, error) {
 	if user == nil {
 		return nil, ErrNotFound
 	}
-	return user.Copy(), nil
+	return user.AsModelUser(), nil
 }
 
-func (db *Store) Login(email, password string) (*User, error) {
+func (db *Store) Login(email, password string) (*model.User, error) {
 	db.Lock()
 	defer db.Unlock()
 	user := db.users.email[email]
 	if user == nil || user.Password != password { // yeah, we know, timing attack
 		return nil, ErrNotAuthorized
 	}
-	return user.Copy(), nil
+	return user.AsModelUser(), nil
 }
 
-func (db *Store) UpdateUser(id int, email, bio, image *string) (*User, map[string][]string) {
+func (db *Store) UpdateUser(id int, email, bio, image *string) (*model.User, map[string][]string) {
 	db.Lock()
 	defer db.Unlock()
 	errs := make(map[string][]string)
@@ -180,7 +179,7 @@ func (db *Store) UpdateUser(id int, email, bio, image *string) (*User, map[strin
 	}
 
 	if !changes {
-		return user.Copy(), nil
+		return user.AsModelUser(), nil
 	}
 
 	// clear out pointers to the old record
@@ -193,10 +192,10 @@ func (db *Store) UpdateUser(id int, email, bio, image *string) (*User, map[strin
 	db.users.name[user.Username] = cp
 	db.users.email[user.Email] = cp
 
-	return cp.Copy(), nil
+	return cp.AsModelUser(), nil
 }
 
-func (db *Store) UnfollowUserByUsername(id int, username string) (*Profile, error) {
+func (db *Store) UnfollowUserByUsername(id int, username string) (*model.Profile, error) {
 	db.Lock()
 	defer db.Unlock()
 
@@ -213,7 +212,7 @@ func (db *Store) UnfollowUserByUsername(id int, username string) (*Profile, erro
 	}
 	delete(user.Following, target.Id)
 
-	return target.Profile(user), nil
+	return target.AsModelProfile(user), nil
 }
 
 type Store struct {
@@ -226,15 +225,6 @@ type Store struct {
 	}
 }
 
-type Profile struct {
-	Id         int
-	Username   string
-	Bio        *string
-	Image      *string
-	Following  bool
-	bio, image string
-}
-
 type User struct {
 	Id         int
 	Username   string
@@ -244,8 +234,54 @@ type User struct {
 	UpdatedAt  string // "2021-03-27T16:58:01.245Z"
 	Bio        *string
 	Image      *string
-	Following  map[int]bool // map of Id of users being followed
+	Following  map[int]*User // map of Id of users being followed
 	bio, image string
+}
+
+func (u *User) AsModelProfile(p *User) *model.Profile {
+	if u == nil {
+		return &model.Profile{}
+	}
+	profile := &model.Profile{
+		Id:        u.Id,
+		Username:  u.Username,
+		Following: p != nil && p.Following[u.Id] != nil,
+	}
+	if u.Bio != nil {
+		tmp := *u.Bio
+		profile.Bio = &tmp
+	}
+	if u.Image != nil {
+		tmp := *u.Image
+		profile.Image = &tmp
+	}
+	return profile
+}
+
+func (u *User) AsModelUser() *model.User {
+	if u == nil {
+		return &model.User{}
+	}
+	cp := &model.User{
+		Id:        u.Id,
+		Username:  u.Username,
+		Email:     u.Email,
+		Password:  u.Password,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
+	if u.Bio != nil {
+		tmp := *u.Bio
+		cp.Bio = &tmp
+	}
+	if u.Image != nil {
+		tmp := *u.Image
+		cp.Image = &tmp
+	}
+	for _, user := range u.Following {
+		cp.Following = append(cp.Following, user.Username)
+	}
+	return cp
 }
 
 func (u *User) Copy() *User {
@@ -259,7 +295,7 @@ func (u *User) Copy() *User {
 		Password:  u.Password,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
-		Following: make(map[int]bool),
+		Following: make(map[int]*User),
 		bio:       u.bio,
 		image:     u.image,
 	}
@@ -269,28 +305,8 @@ func (u *User) Copy() *User {
 	if u.Image != nil {
 		cp.Image = &cp.image
 	}
-	for id := range u.Following {
-		cp.Following[id] = true
+	for id, user := range u.Following {
+		cp.Following[id] = user
 	}
 	return cp
-}
-
-func (u *User) Profile(p *User) *Profile {
-	if u == nil {
-		return &Profile{}
-	}
-	profile := &Profile{
-		Id:        u.Id,
-		Username:  u.Username,
-		Following: p != nil && p.Following[u.Id],
-		bio:       u.bio,
-		image:     u.image,
-	}
-	if u.Bio != nil {
-		profile.Bio = &profile.bio
-	}
-	if u.Image != nil {
-		profile.Image = &profile.image
-	}
-	return profile
 }
