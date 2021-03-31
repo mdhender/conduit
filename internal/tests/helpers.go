@@ -22,30 +22,52 @@
  * SOFTWARE.
  */
 
-// Package tests implements a test suite for the Conduit server API.
-//
-// To use this package, your server must provide a NewServer function
-// which returns a struct that satisfies the Server interface.
-//
-// You must also arrange for your server's test file to call the suite
-// functions directly. Those are the functions that have the NewServer
-// as a parameter.
 package tests
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"time"
+	"net/http/httptest"
 )
 
-type Server interface {
-	NewJWT(ttl time.Duration, id int, username, email string, roles ...string) string
-	ServeHTTP(w http.ResponseWriter, r *http.Request)
+func fetch(body io.Reader, data interface{}) error {
+	if dec := json.NewDecoder(body); dec == nil {
+		return fmt.Errorf("failed to create decoder")
+	} else if err := dec.Decode(&data); err != nil {
+		return err
+	} else if err = dec.Decode(&struct{}{}); err != io.EOF {
+		return fmt.Errorf("body must only contain a single JSON object")
+	}
+
+	return nil
 }
 
-type TestServer func(secret string) Server
-
-type keyValue struct {
-	key, value string
+func jsonReader(v interface{}) io.Reader {
+	if v == nil {
+		return nil
+	}
+	buf, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("assert(err != %+v)", err))
+	}
+	return bytes.NewReader(buf)
 }
 
-var contentType = keyValue{"Content-Type", "application/json; charset=utf-8"}
+func request(method, target string, v interface{}, keys ...keyValue) *http.Request {
+	var body io.Reader
+	if v != nil {
+		buf, err := json.Marshal(v)
+		if err != nil {
+			panic(fmt.Sprintf("assert(err != %+v)", err))
+		}
+		body = bytes.NewReader(buf)
+	}
+	req := httptest.NewRequest(method, target, body)
+	for _, kv := range keys {
+		req.Header.Set(kv.key, kv.value)
+	}
+	return req
+}
