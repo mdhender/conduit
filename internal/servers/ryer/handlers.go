@@ -34,6 +34,8 @@ import (
 	"time"
 )
 
+var contentType = "application/json; charset=utf-8"
+
 func (s *Server) adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.currentUser(r).IsAdmin {
@@ -82,73 +84,6 @@ func (s *Server) handleCurrentUser() http.HandlerFunc {
 	}
 }
 
-// post body should contain a NewUserRequest which wraps a NewUser
-// Returns a UserResponse which wraps a User
-func (s *Server) handleCreateUser() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if s.debug {
-			log.Printf("createUser\n")
-		}
-
-		var req conduit.NewUserRequest
-		err := jsonapi.Data(w, r, s.rejectUnknownFields, &req)
-		if err != nil {
-			if s.debug {
-				log.Printf("createUser: %+v\n", err)
-			}
-			if errors.Is(err, jsonapi.ErrBadRequest) {
-				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
-				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
-			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
-				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
-			} else {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			}
-			return
-		}
-
-		u, errs := s.DB.CreateUser(req.User.Username, req.User.Email, req.User.Password)
-		if errs != nil {
-			w.Header().Add("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			var result struct {
-				Errors map[string][]string `json:"errors"`
-			}
-			result.Errors = errs
-			data, err := json.Marshal(result)
-			if err != nil {
-				if s.debug {
-					log.Printf("createUser: %+v\n", err)
-				}
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			_, _ = w.Write(data)
-			return
-		}
-		user := conduit.User{
-			Id:        u.Id,
-			Email:     u.Email,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-			Username:  u.Username,
-			Token:     s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
-		}
-		data, err := json.Marshal(conduit.UserResponse{User: user})
-		if err != nil {
-			if s.debug {
-				log.Printf("createUser: %+v\n", err)
-			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
-	}
-}
-
 func (s *Server) getArticlesFeed() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.debug {
@@ -173,48 +108,6 @@ func (s *Server) handleGetArticles() http.HandlerFunc {
 			log.Printf("getArticles(%s)\n", r.URL.Path)
 		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-func (s *Server) handleLogin() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req conduit.LoginUserRequest
-		err := jsonapi.Data(w, r, s.rejectUnknownFields, &req)
-		if err != nil {
-			log.Printf("login: %+v\n", err)
-			if errors.Is(err, jsonapi.ErrBadRequest) {
-				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			} else if errors.Is(err, jsonapi.ErrRequestEntityTooLarge) {
-				http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
-			} else if errors.Is(err, jsonapi.ErrUnsupportedMediaType) {
-				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
-			} else {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			}
-			return
-		}
-		u, found := s.DB.Login(req.User.Email, req.User.Password)
-		if !found {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		}
-		user := conduit.User{
-			Email:    u.Email,
-			Token:    s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
-			Username: u.Username,
-			Bio:      u.Bio,
-			Image:    u.Image,
-		}
-		data, err := json.Marshal(conduit.UserResponse{User: user})
-		if err != nil {
-			if s.debug {
-				log.Printf("login: %+v\n", err)
-			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
 	}
 }
 
