@@ -26,6 +26,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -48,6 +49,11 @@ type Config struct {
 			Idle  time.Duration
 			Read  time.Duration
 			Write time.Duration
+		}
+		TLS struct {
+			Serve    bool
+			CertFile string
+			KeyFile  string
 		}
 		Salt    string
 		Key     string
@@ -103,6 +109,9 @@ func (cfg *Config) Load() error {
 	serverTimeoutIdle := fs.Duration("idle-timeout", cfg.Server.Timeout.Idle, "http idle timeout")
 	serverTimeoutRead := fs.Duration("read-timeout", cfg.Server.Timeout.Read, "http read timeout")
 	serverTimeoutWrite := fs.Duration("write-timeout", cfg.Server.Timeout.Write, "http write timeout")
+	serverTLSServe := fs.Bool("https", cfg.Server.TLS.Serve, "serve https")
+	serverTLSCertFile := fs.String("https-cert-file", cfg.Server.Host, "https certificate file")
+	serverTLSKeyFile := fs.String("https-key-file", cfg.Server.Host, "https certificate key file")
 	serverWebRoot := fs.String("web-root", cfg.Server.WebRoot, "path to serve web assets from")
 
 	if err := ff.Parse(fs, os.Args[1:], ff.WithEnvVarPrefix("CONDUIT_RYER_SERVER"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.JSONParser)); err != nil {
@@ -123,7 +132,19 @@ func (cfg *Config) Load() error {
 	cfg.Server.Timeout.Idle = *serverTimeoutIdle
 	cfg.Server.Timeout.Read = *serverTimeoutRead
 	cfg.Server.Timeout.Write = *serverTimeoutWrite
+	cfg.Server.TLS.Serve = *serverTLSServe
+	cfg.Server.TLS.CertFile = *serverTLSCertFile
+	cfg.Server.TLS.KeyFile = *serverTLSKeyFile
 	cfg.Server.WebRoot = path.Clean(*serverWebRoot)
+
+	if cfg.Server.TLS.Serve == true {
+		if cfg.Server.TLS.CertFile == "" {
+			return fmt.Errorf("must supply certificates file when serving HTTPS")
+		}
+		if cfg.Server.TLS.KeyFile == "" {
+			return fmt.Errorf("must supply certificate key file when serving HTTPS")
+		}
+	}
 
 	return nil
 }

@@ -65,12 +65,15 @@ func run(cfg *config.Config) error {
 	s.IdleTimeout = cfg.Server.Timeout.Idle
 	s.ReadTimeout = cfg.Server.Timeout.Read
 	s.WriteTimeout = cfg.Server.Timeout.Write
-	s.MaxHeaderBytes = 1 << 20
+	s.MaxHeaderBytes = 1 << 20 // TODO: make this configurable
 	s.Handler = s.Router
 
 	s.Routes()
 
-	// TODO: allow HTTPS
+	if cfg.Server.TLS.Serve {
+		log.Printf("[main] serving TLS on %s\n", s.Addr)
+		return s.ListenAndServeTLS(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+	}
 	log.Printf("[main] listening on %s\n", s.Addr)
 	return s.ListenAndServe()
 }
