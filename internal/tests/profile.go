@@ -74,14 +74,13 @@ func Profile(newServer TestServer, t *testing.T) {
 
 	// Given the prior Server
 	// And the request is GET /api/profiles/Anne
-	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
 	// And contain a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
-	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if expected := http.StatusOK; w.Code != expected {
@@ -102,14 +101,13 @@ func Profile(newServer TestServer, t *testing.T) {
 
 	// Given the prior Server
 	// And the request is POST /api/profiles/Anne/follow
-	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
 	// And contain a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be true
-	req = request("POST", "/api/profiles/Anne/follow", nil, contentType, validBearerToken)
+	req = request("POST", "/api/profiles/Anne/follow", nil, validBearerToken)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if expected := http.StatusOK; w.Code != expected {
@@ -130,14 +128,13 @@ func Profile(newServer TestServer, t *testing.T) {
 
 	// Given the prior Server
 	// And the request is GET /api/profiles/Anne
-	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
 	// And contain a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be true
-	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if expected := http.StatusOK; w.Code != expected {
@@ -161,19 +158,20 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
-	// And contain a valid Profile with the username of "Jacob"
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be false
 	t.Errorf("DELETE /api/profiles/Anne/follow !implemented")
 
 	// Given the prior Server
 	// And the request is GET /api/profiles/Anne
-	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
 	// When we execute the request
 	// Then the response should have a status of 200 (ok)
 	// And contain a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
-	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	req = request("GET", "/api/profiles/Anne", nil, validBearerToken)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if expected := http.StatusOK; w.Code != expected {
