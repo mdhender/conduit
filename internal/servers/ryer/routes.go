@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package server
+package ryer
 
 import (
 	"net/http"

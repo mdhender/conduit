@@ -30,7 +30,7 @@ package main
 import (
 	"github.com/mdhender/conduit/internal/config"
 	"github.com/mdhender/conduit/internal/jwt"
-	server "github.com/mdhender/conduit/internal/servers/ryer"
+	"github.com/mdhender/conduit/internal/servers/ryer"
 	"github.com/mdhender/conduit/internal/store/memory"
 	"github.com/mdhender/conduit/internal/way"
 	"log"
@@ -55,7 +55,7 @@ func main() {
 }
 
 func run(cfg *config.Config) error {
-	s := &server.Server{
+	s := &ryer.Server{
 		DB:           memory.New(),
 		DtFmt:        cfg.App.TimestampFormat,
 		Router:       way.NewRouter(),
@@ -70,6 +70,6 @@ func run(cfg *config.Config) error {
 
 	s.Routes()
 
-	log.Printf("[server] listening on %s\n", s.Addr)
+	log.Printf("[main] listening on %s\n", s.Addr)
 	return s.ListenAndServe()
 }

@@ -22,13 +22,13 @@
  * SOFTWARE.
  */
 
-// Package server implements a Conduit server in the style of Mat Ryer's server.
+// Package ryer implements a Conduit server in the style of Mat Ryer's server.
 // (see https://pace.dev/blog/2018/05/09/how-I-write-http-services-after-eight-years.html)
 // (see https://svlapin.github.io/engineering/2019/09/14/go-patterns.html)
 // Note: I would normally place this in the `main` package. I'm breaking it out
 // to make it easier to run the combined test suite and to keep the `main` packages
 // for all the servers as common as possible.
-package server
+package ryer
 
 import (
 	"encoding/json"
