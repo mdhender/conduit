@@ -181,7 +181,13 @@ func User(newServer TestServer, t *testing.T) {
 	// And the request does not include a valid bearer token
 	// And the request body is an UpdateUserRequest with the values
 	//   { "user":{ "email": "jake@jake.jake", "bio": "Change is good" } }
+	email, bio = "jake@jake.jake", "Change is good"
+	updateUser = conduit.UpdateUser{Email: &email, Bio: &bio}
+	req = request("PUT", "/api/user", conduit.UpdateUserRequest{User: updateUser}, contentType, expiredBearerToken)
 	// Then executing the request should fail with status of 401 (not authorized)
-	t.Errorf("!implemented")
-
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusUnauthorized; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	}
 }
