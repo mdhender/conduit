@@ -22,39 +22,39 @@
  * SOFTWARE.
  */
 
-// Package ryer implements a Conduit server in the style of Mat Ryer's server.
-// (see https://pace.dev/blog/2018/05/09/how-I-write-http-services-after-eight-years.html)
-// (see https://svlapin.github.io/engineering/2019/09/14/go-patterns.html)
-//
-// Note: I would normally place this in the `main` package. I'm breaking it out
-// to make it easier to run the combined test suite and to keep the `main` packages
-// for all the servers as common as possible.
 package ryer
 
 import (
 	"github.com/mdhender/conduit/internal/jwt"
 	"github.com/mdhender/conduit/internal/store/memory"
-	"github.com/mdhender/conduit/internal/way"
 	"net/http"
-	"time"
 )
 
-type Server struct {
-	http.Server
-	DB                  *memory.Store
-	DtFmt               string // format string for timestamps in responses
-	Router              *way.Router
-	TokenFactory        jwt.Factory
-	debug               bool
-	rejectUnknownFields bool
-}
-
-// NewJWT implements the tests.Server interface
-func (s *Server) NewJWT(ttl time.Duration, id int, username, email string, roles ...string) string {
-	return s.TokenFactory.NewToken(ttl, id, username, email, roles...)
-}
-
-// ServeHTTP implements the http handler interface
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.Router.ServeHTTP(w, r)
+// currentUser extracts data for the user making the request.
+// It always returns a user struct, even if the request does
+// not have a valid bearer token.
+// TODO: should return a Conduit User.
+func (s *Server) currentUser(r *http.Request) (user struct {
+	IsAdmin         bool
+	IsAuthenticated bool
+	User            memory.User
+}) {
+	j, err := jwt.GetBearerToken(r)
+	if err != nil {
+		return user
+	} else if err = s.TokenFactory.Validate(j); err != nil {
+		return user
+	} else if !j.IsValid() {
+		return user
+	}
+	user.User, _ = s.DB.GetUser(j.Data().Id)
+	for _, role := range j.Data().Roles {
+		switch role {
+		case "admin":
+			user.IsAdmin = true
+		case "authenticated":
+			user.IsAuthenticated = true
+		}
+	}
+	return user
 }
