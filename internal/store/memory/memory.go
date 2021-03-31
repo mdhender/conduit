@@ -74,6 +74,36 @@ func (s *Store) CreateUser(username, email, password string) (User, map[string][
 	return u, nil
 }
 
+func (s *Store) GetProfileByUsername(id int, username string) (Profile, bool) {
+	s.Lock()
+	defer s.Unlock()
+	for i := range s.users {
+		if s.users[i].Username == username {
+			profile := Profile{Id: s.users[i].Id, Username: username}
+			if s.users[i].Bio != nil {
+				profile.Bio = *s.users[i].Bio
+			}
+			if s.users[i].Image != nil {
+				profile.Image = *s.users[i].Image
+			}
+			if id != 0 {
+				for j := range s.users {
+					if s.users[j].Id == id {
+						for _, k := range s.users[j].Following {
+							if k == profile.Id {
+								profile.Following = true
+								break
+							}
+						}
+					}
+				}
+			}
+			return profile, true
+		}
+	}
+	return Profile{}, false
+}
+
 func (s *Store) GetUser(id int) (User, bool) {
 	s.Lock()
 	defer s.Unlock()
@@ -147,6 +177,14 @@ type Store struct {
 	users []User
 }
 
+type Profile struct {
+	Id        int
+	Username  string
+	Bio       string
+	Image     string
+	Following bool
+}
+
 type User struct {
 	Id        int
 	Username  string
@@ -156,4 +194,5 @@ type User struct {
 	UpdatedAt string // "2021-03-27T16:58:01.245Z"
 	Bio       *string
 	Image     *string
+	Following []int // list of Id of users being followed
 }

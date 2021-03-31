@@ -24,31 +24,153 @@
 
 package tests
 
-import "testing"
+import (
+	"github.com/mdhender/conduit/internal/conduit"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
 
 func Profile(newServer TestServer, t *testing.T) {
+	srv := newServer(secret)
+	validBearerToken := keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(15*time.Second, 1, "Jacob", "jake@jake.jake", "authenticated")}
+
 	// Specification: Profile API
 
-	// When given a new Server
+	// Given a new server
 	// And the user with username "Jacob," e-mail "jake@jake.jake," and password "jakejake" has been added
 	// And the user with username "Anne," e-mail "anne@anne.anne," and password "anneanne" has been added
 	// And the request is GET /api/profiles/Anne
 	// And the request content type header is "application/json; charset=utf-8"
-	// Then executing the request should succeed with status of 200 (ok)
-	// And return a valid Profile with the username of "Anne"
-	t.Errorf("!implemented")
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be false
+	srv = newServer(secret)
+	newUser := conduit.NewUser{Username: "Jacob", Email: "jake@jake.jake", Password: "jakejake"}
+	srv.ServeHTTP(httptest.NewRecorder(), request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, contentType))
+	newUser = conduit.NewUser{Username: "Anne", Email: "anne@anne.anne", Password: "anneanne"}
+	srv.ServeHTTP(httptest.NewRecorder(), request("POST", "/api/users", conduit.NewUserRequest{User: newUser}, contentType))
+	req := request("GET", "/api/profiles/Anne", nil, contentType)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := false; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
 
-	// When given the prior Server
-	// And the request is POST /api/profiles/:username/follow
+	// Given the prior Server
+	// And the request is GET /api/profiles/Anne
+	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
-	// Then executing the request should succeed with status of 200 (ok)
-	// And return a valid Profile with the username of "Anne"
-	t.Errorf("!implemented")
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be false
+	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := true; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
 
-	// When given the prior Server
+	// Given the prior Server
+	// And the request is POST /api/profiles/Anne/follow
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a valid bearer token for the user "jake@jake.jake"
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile with the username of "Anne"
+	t.Errorf("POST /api/profiles/Anne/follow !implemented")
+
+	// Given the prior Server
+	// And the request is GET /api/profiles/Anne
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a valid bearer token for the user "jake@jake.jake"
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be true
+	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := true; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
+
+	// Given the prior Server
 	// And the request is DELETE /api/profiles/Anne/follow
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
-	// Then executing the request should succeed with status of 200 (ok)
-	// And return a valid Profile with the username of "Anne"
-	t.Errorf("!implemented")
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile with the username of "Jacob"
+	t.Errorf("DELETE /api/profiles/Anne/follow !implemented")
+
+	// Given the prior Server
+	// And the request is GET /api/profiles/Anne
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a valid bearer token for the user "jake@jake.jake"
+	// When we execute the request
+	// Then the response should have a status of 200 (ok)
+	// And contain a valid Profile
+	// And the username should be "Anne"
+	// And the following flag should be false
+	req = request("GET", "/api/profiles/Anne", nil, contentType, validBearerToken)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := false; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
 }
