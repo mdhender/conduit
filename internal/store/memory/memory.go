@@ -196,6 +196,26 @@ func (db *Store) UpdateUser(id int, email, bio, image *string) (*User, map[strin
 	return cp.Copy(), nil
 }
 
+func (db *Store) UnfollowUserByUsername(id int, username string) (*Profile, error) {
+	db.Lock()
+	defer db.Unlock()
+
+	user := db.users.id[id]
+	if id == 0 || user == nil {
+		return nil, ErrNotAuthorized
+	} else if user.Username == username { // wants to follow self
+		return nil, ErrNotAuthorized
+	}
+
+	target := db.users.name[username]
+	if target == nil {
+		return nil, ErrNotFound
+	}
+	delete(user.Following, target.Id)
+
+	return target.Profile(user), nil
+}
+
 type Store struct {
 	sync.RWMutex
 	seq   int

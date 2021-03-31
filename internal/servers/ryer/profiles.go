@@ -92,3 +92,31 @@ func (s *Server) handleGetProfileByUsername() http.HandlerFunc {
 		_, _ = w.Write(data)
 	}
 }
+
+func (s *Server) handleUnfollowUserByUsername() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cu := s.currentUser(r).User
+
+		username := way.Param(r.Context(), "username")
+		profile, err := s.DB.UnfollowUserByUsername(cu.Id, username)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		data, err := json.Marshal(conduit.ProfileResponse{Profile: conduit.Profile{
+			Bio:       profile.Bio,
+			Following: profile.Following,
+			Image:     profile.Image,
+			Username:  profile.Username,
+		}})
+		if err != nil {
+			log.Printf("unfollowUserByUsername: %+v\n", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}
+}

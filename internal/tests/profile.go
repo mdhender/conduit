@@ -161,7 +161,24 @@ func Profile(newServer TestServer, t *testing.T) {
 	// And contain a valid Profile
 	// And the username should be "Anne"
 	// And the following flag should be false
-	t.Errorf("DELETE /api/profiles/Anne/follow !implemented")
+	req = request("DELETE", "/api/profiles/Anne/follow", nil, validBearerToken)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		var profileResponse conduit.ProfileResponse
+		if err := fetch(w.Result().Body, &profileResponse); err != nil {
+			t.Errorf("profile: %s %s response did not contain valid ProfileResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := "Anne"; profileResponse.Profile.Username != expected {
+				t.Errorf("profile: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Username)
+			}
+			if expected := false; profileResponse.Profile.Following != expected {
+				t.Errorf("profile: %s %s following expected %v: got %v\n", req.Method, req.URL.Path, expected, profileResponse.Profile.Following)
+			}
+		}
+	}
 
 	// Given the prior Server
 	// And the request is GET /api/profiles/Anne

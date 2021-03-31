@@ -49,7 +49,7 @@ func (s *Server) Routes() {
 		{"/api/articles/:slug/favorite", "DELETE", s.handleNotImplemented()},
 		{"/api/articles/:slug/favorite", "POST", s.handleNotImplemented()},
 		{"/api/profiles/:username", "GET", s.handleGetProfileByUsername()},
-		{"/api/profiles/:username/follow", "DELETE", s.handleNotImplemented()},
+		{"/api/profiles/:username/follow", "DELETE", s.authenticatedOnly(s.handleUnfollowUserByUsername())},
 		{"/api/profiles/:username/follow", "POST", s.authenticatedOnly(s.handleFollowUserByUsername())},
 		{"/api/tags", "GET", s.handleNotImplemented()},
 		{"/api/user", "GET", s.authenticatedOnly(s.handleCurrentUser())},
