@@ -67,6 +67,7 @@ func request(method, target string, v interface{}, keys ...keyValue) *http.Reque
 	}
 	req := httptest.NewRequest(method, target, body)
 	for _, kv := range keys {
+		//log.Printf("request: set %q value %q\n", kv.key, kv.value)
 		req.Header.Set(kv.key, kv.value)
 	}
 	return req

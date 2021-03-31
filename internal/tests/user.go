@@ -38,50 +38,9 @@ func User(newServer TestServer, t *testing.T) {
 	validBearerToken := keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(15*time.Second, 1, "Jacob", "jake@jake.jake", "authenticated")}
 	expiredBearerToken := keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(0*time.Second, 1, "Jacob", "jake@jake.jake", "authenticated")}
 
-	// When given a new server
-	// And the request is GET /api/user with no bearer token
-	srv = newServer(secret)
-	req := request("GET", "/api/user", nil)
-	// Then executing the request should fail with status of 401 (not authorized)
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
-	}
-
-	// When given a new server
-	// And the request is GET /api/user with a valid bearer token
-	srv = newServer(secret)
-	req = httptest.NewRequest("GET", "/api/user", nil)
-	req = request("GET", "/api/user", nil, contentType, validBearerToken)
-	// Then executing the request should success with status of 200 (OK)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusOK, w.Code)
-	}
-
-	// When given a new server
-	// And the request is GET /api/user with an expired bearer token
-	srv = newServer(secret)
-	req = httptest.NewRequest("GET", "/api/user", nil)
-	req = request("GET", "/api/user", nil, contentType, expiredBearerToken)
-	// Then executing the request should fail with status of 401 (not authorized)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
-	}
-}
-
-func UserX(newServer TestServer, t *testing.T) {
-	srv := newServer(secret)
-	validBearerToken := keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(15*time.Second, 1, "Jacob", "jake@jake.jake", "authenticated")}
-	expiredBearerToken := keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(0*time.Second, 1, "Jacob", "jake@jake.jake", "authenticated")}
-
 	// Specification: User API
 
-	// When given a new Server
+	// When given a new server
 	srv = newServer(secret)
 	// And the user with username "Jacob," e-mail "jake@jake.jake," and password "jakejake" has been added
 	srv.ServeHTTP(httptest.NewRecorder(), request("POST", "/api/users", conduit.NewUserRequest{User: conduit.NewUser{Username: "Jacob", Email: "jake@jake.jake", Password: "jakejake"}}, contentType))
@@ -92,21 +51,92 @@ func UserX(newServer TestServer, t *testing.T) {
 	// Then executing the request should succeed with status of 200 (ok)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusOK, http.StatusText(http.StatusOK), w.Code, http.StatusText(w.Code))
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
 	} else {
 		// And return a valid user with the email of "jake@jake.jake"
 		var userResponse conduit.UserResponse
 		if err := fetch(w.Result().Body, &userResponse); err != nil {
-			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+			t.Errorf("user: %s %s response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
 		} else {
-			if userResponse.User.Email != "jake@jake.jake" {
-				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, "jake@jake.jake", userResponse.User.Email)
+			if expected := "jake@jake.jake"; userResponse.User.Email != expected {
+				t.Errorf("user: %s %s email expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Email)
 			}
 		}
 	}
 
-	// When given the prior Server
+	// When given the prior server
+	// And the request is GET /api/user
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request does not include a bearer token
+	req = request("GET", "/api/user", nil, contentType)
+	// Then executing the request should fail with status of 401 (not authorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusUnauthorized; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given the prior server
+	// And the request is GET /api/user
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a bearer token for an unauthenticated user
+	req = request("GET", "/api/user", nil, contentType, keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(15*time.Second, 1, "Guest", "guest@guest.guest")})
+	// Then executing the request should fail with status of 401 (not authorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusUnauthorized; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given the prior server
+	// And the request is GET /api/user
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a bearer token for a non-existent user
+	req = request("GET", "/api/user", nil, contentType, keyValue{key: "Authorization", value: "Bearer " + srv.NewJWT(15*time.Second, 0, "Guest", "guest@guest.guest", "authenticated")})
+	// Then executing the request should success with status of 200 (OK)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	} else {
+		// And return a valid user with an ID of 0 and empty email
+		var userResponse conduit.UserResponse
+		if err := fetch(w.Result().Body, &userResponse); err != nil {
+			t.Errorf("user: %s %s response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+		} else {
+			if expected := 0; userResponse.User.Id != expected {
+				t.Errorf("user: %s %s id expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Id)
+			}
+			if expected := ""; userResponse.User.Email != expected {
+				t.Errorf("user: %s %s email expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Email)
+			}
+		}
+	}
+
+	// When given the prior server
+	// And the request is GET /api/user with an expired bearer token
+	req = request("GET", "/api/user", nil, contentType, expiredBearerToken)
+	// Then executing the request should fail with status of 401 (not authorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusUnauthorized; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given the prior server
+	// And the request is GET /api/user
+	// And the request content type header is "application/json; charset=utf-8"
+	// And the request includes a expired bearer token
+	req = request("GET", "/api/user", nil, contentType, expiredBearerToken)
+	// Then executing the request should fail with status of 401 (not authorized)
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if expected := http.StatusUnauthorized; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
+	}
+
+	// When given the prior server
 	// And the request is PUT /api/user
 	// And the request content type header is "application/json; charset=utf-8"
 	// And the request includes a valid bearer token for the user "jake@jake.jake"
@@ -118,41 +148,34 @@ func UserX(newServer TestServer, t *testing.T) {
 	// Then executing the request should succeed with status of 200 (ok)
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, http.StatusOK, http.StatusText(http.StatusOK), w.Code, http.StatusText(w.Code))
+	if expected := http.StatusOK; w.Code != expected {
+		t.Errorf("user: %s %s expected %d(%s): got %d(%s)\n", req.Method, req.URL.Path, expected, http.StatusText(expected), w.Code, http.StatusText(w.Code))
 	} else {
 		// And return a valid user with the username of "Jacob" with the updated fields
 		var userResponse conduit.UserResponse
 		if err := fetch(w.Result().Body, &userResponse); err != nil {
-			t.Errorf("api: %q %q response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
+			t.Errorf("user: %s %s response did not contain valid UserResponse: %+v\n", req.Method, req.URL.Path, err)
 		} else {
-			if userResponse.User.Username != "Jacob" {
-				t.Errorf("api: %q %q username expected %q: got %q\n", req.Method, req.URL.Path, "Jacob", userResponse.User.Username)
+			if expected := "Jacob"; userResponse.User.Username != expected {
+				t.Errorf("user: %s %s username expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Username)
 			}
-			if userResponse.User.Email != email {
-				t.Errorf("api: %q %q email expected %q: got %q\n", req.Method, req.URL.Path, email, userResponse.User.Email)
+			if expected := email; userResponse.User.Email != expected {
+				t.Errorf("user: %s %s email expected %q: got %q\n", req.Method, req.URL.Path, expected, userResponse.User.Email)
 			}
-			if userResponse.User.Bio == nil {
-				t.Errorf("api: %q %q bio expected %q: got nil\n", req.Method, req.URL.Path, bio)
-			} else if *userResponse.User.Bio != bio {
-				t.Errorf("api: %q %q bio expected %q: got %q\n", req.Method, req.URL.Path, bio, *userResponse.User.Bio)
+			if expected := bio; userResponse.User.Bio == nil {
+				t.Errorf("user: %s %s bio expected %q: got nil\n", req.Method, req.URL.Path, expected)
+			} else if *userResponse.User.Bio != expected {
+				t.Errorf("user: %s %s bio expected %q: got %q\n", req.Method, req.URL.Path, expected, *userResponse.User.Bio)
 			}
-			if userResponse.User.Image == nil {
-				t.Errorf("api: %q %q image expected %q: got nil\n", req.Method, req.URL.Path, image)
-			} else if *userResponse.User.Image != image {
-				t.Errorf("api: %q %q image expected %q: got %q\n", req.Method, req.URL.Path, image, *userResponse.User.Image)
+			if expected := image; userResponse.User.Image == nil {
+				t.Errorf("user: %s %s image expected %q: got nil\n", req.Method, req.URL.Path, expected)
+			} else if *userResponse.User.Image != expected {
+				t.Errorf("user: %s %s image expected %q: got %q\n", req.Method, req.URL.Path, expected, *userResponse.User.Image)
 			}
 		}
 	}
 
-	// When given the prior Server
-	// And the request is GET /api/user
-	// And the request content type header is "application/json; charset=utf-8"
-	// And the request does not include a valid bearer token
-	// Then executing the request should fail with status of 401 (not authorized)
-	t.Errorf("!implemented")
-
-	// When given the prior Server
+	// When given the prior server
 	// And the request is PUT /api/user
 	// And the request content type header is "application/json; charset=utf-8"
 	// And the request does not include a valid bearer token
@@ -161,38 +184,4 @@ func UserX(newServer TestServer, t *testing.T) {
 	// Then executing the request should fail with status of 401 (not authorized)
 	t.Errorf("!implemented")
 
-	// When given a new Server
-	// And the request is GET /api/user with no bearer token
-	srv = newServer(secret)
-	req = request("GET", "/api/user", nil)
-	// Then executing the request should fail with status of 401 (not authorized)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
-	}
-
-	// When given a new Server
-	// And the request is GET /api/user with a valid bearer token
-	srv = newServer(secret)
-	req = httptest.NewRequest("GET", "/api/user", nil)
-	req = request("GET", "/api/user", nil, contentType, validBearerToken)
-	// Then executing the request should success with status of 200 (ok)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusOK, w.Code)
-	}
-
-	// When given a new Server
-	// And the request is GET /api/user with an expired bearer token
-	srv = newServer(secret)
-	req = httptest.NewRequest("GET", "/api/user", nil)
-	req = request("GET", "/api/user", nil, contentType, expiredBearerToken)
-	// Then executing the request should fail with status of 401 (not authorized)
-	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("api: %q %q expected %d: got %d\n", req.Method, req.URL.Path, http.StatusUnauthorized, w.Code)
-	}
 }

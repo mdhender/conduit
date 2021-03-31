@@ -238,7 +238,6 @@ func (s *Server) handleNotImplemented() http.HandlerFunc {
 
 func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("updateCurrentUser\n")
 		cu := s.currentUser(r).User
 
 		var req conduit.UpdateUserRequest
@@ -256,7 +255,6 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 			}
 			return
 		}
-		log.Println(req)
 		u, errs := s.DB.UpdateUser(cu.Id, req.User.Email, req.User.Bio, req.User.Image)
 		if errs != nil {
 			w.Header().Add("Content-Type", "application/json; charset=utf-8")
@@ -276,17 +274,17 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 		}
 		user := conduit.User{
 			Id:        u.Id,
-			Email:     u.Email,
+			Bio:       u.Bio,
 			CreatedAt: u.CreatedAt,
+			Email:     u.Email,
+			Image:     u.Image,
 			UpdatedAt: u.UpdatedAt,
 			Username:  u.Username,
 			Token:     s.TokenFactory.NewToken(24*time.Hour, u.Id, u.Username, u.Email, "authenticated"),
 		}
 		data, err := json.Marshal(conduit.UserResponse{User: user})
 		if err != nil {
-			if s.debug {
-				log.Printf("createUser: %+v\n", err)
-			}
+			log.Printf("updateCurrentUser: %+v\n", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}

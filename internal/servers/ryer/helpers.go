@@ -41,8 +41,11 @@ func (s *Server) currentUser(r *http.Request) (user struct {
 }) {
 	j, err := jwt.GetBearerToken(r)
 	if err != nil {
+		//log.Printf("currentUser: bearerToken %v\n", j)
+		//log.Printf("currentUser: getBearerToken %+v\n", err)
 		return user
 	} else if err = s.TokenFactory.Validate(j); err != nil {
+		//log.Printf("currentUser: validateToken %+v\n", err)
 		return user
 	} else if !j.IsValid() {
 		return user
