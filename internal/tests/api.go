@@ -24,6 +24,9 @@
 
 package tests
 
+// see https://github.com/peterbourgon/ff/blob/master/parse_test.go
+// for how this could work as a reusable "test suite"
+
 import (
 	"net/http"
 	"net/http/httptest"

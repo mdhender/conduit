@@ -22,53 +22,40 @@
  * SOFTWARE.
  */
 
-// Package main implements a Conduit Server in the style of Mat Ryer's Server.
-// (see https://pace.dev/blog/2018/05/09/how-I-write-http-services-after-eight-years.html)
-// (see https://svlapin.github.io/engineering/2019/09/14/go-patterns.html)
-package main
+// Package config_test implements tests against the exposed Config API
+//
+// Apparently https://github.com/golang/go/issues/31859#issuecomment-489889428
+// kind of broke tests that need command line flags. Limiting test to just the
+// default values.
+package config_test
 
 import (
 	"github.com/mdhender/conduit/internal/config"
-	"github.com/mdhender/conduit/internal/jwt"
-	"github.com/mdhender/conduit/internal/store/memory"
-	"github.com/mdhender/conduit/internal/way"
-	"log"
-	"net"
-	"os"
+	"testing"
 )
 
-func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC) // force logs to be UTC
-	log.Println("[main] entered")
+func TestDefault(t *testing.T) {
+	// Specification: Config API
 
+	// Given an empty environment
+	// When we create a new configuration
 	cfg := config.Default()
-	if err := cfg.Load(); err != nil {
-		log.Printf("[main] %+v\n", err)
-		os.Exit(2)
+	// Then we should have a valid Config
+	// And it should have the expected default values
+	if cfg == nil {
+		t.Fatalf("default: expected config to be non-nil: got nil\n")
 	}
-
-	if err := run(cfg); err != nil {
-		log.Printf("[main] %+v\n", err)
-		os.Exit(2)
+	// And default values should be ...
+	if expected := false; cfg.Debug != expected {
+		t.Errorf("default: expected debug to be %v: got %v\n", expected, cfg.Debug)
 	}
-}
-
-func run(cfg *config.Config) error {
-	s := &Server{
-		db:           memory.New(),
-		dtfmt:        cfg.App.TimestampFormat,
-		router:       way.NewRouter(),
-		tokenFactory: jwt.NewFactory(cfg.Server.Salt + cfg.Server.Key),
+	if expected := "http"; cfg.Server.Scheme != expected {
+		t.Errorf("default: expected server.scheme to be %q: got %q\n", expected, cfg.Server.Scheme)
 	}
-	s.Addr = net.JoinHostPort(cfg.Server.Host, cfg.Server.Port)
-	s.IdleTimeout = cfg.Server.Timeout.Idle
-	s.ReadTimeout = cfg.Server.Timeout.Read
-	s.WriteTimeout = cfg.Server.Timeout.Write
-	s.MaxHeaderBytes = 1 << 20
-	s.Handler = s.router
-
-	s.routes()
-
-	log.Printf("[Server] listening on %s\n", s.Addr)
-	return s.ListenAndServe()
+	if expected := "localhost"; cfg.Server.Host != expected {
+		t.Errorf("default: expected server.host to be %q: got %q\n", expected, cfg.Server.Host)
+	}
+	if expected := "3000"; cfg.Server.Port != expected {
+		t.Errorf("default: expected server.port to be %q: got %q\n", expected, cfg.Server.Port)
+	}
 }
