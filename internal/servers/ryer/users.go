@@ -62,7 +62,7 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 
 		u, errs := s.DB.CreateUser(req.User.Username, req.User.Email, req.User.Password)
 		if errs != nil {
-			w.Header().Add("Content-Type", "application/json; charset=utf-8")
+			w.Header().Add("Content-Type", contentType)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			var result struct {
 				Errors map[string][]string `json:"errors"`
@@ -95,7 +95,7 @@ func (s *Server) handleCreateUser() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}
@@ -137,7 +137,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}

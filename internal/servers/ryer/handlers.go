@@ -78,7 +78,7 @@ func (s *Server) handleCurrentUser() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}
@@ -150,7 +150,7 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 		}
 		u, errs := s.DB.UpdateUser(cu.Id, req.User.Email, req.User.Bio, req.User.Image)
 		if errs != nil {
-			w.Header().Add("Content-Type", "application/json; charset=utf-8")
+			w.Header().Add("Content-Type", contentType)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			var result struct {
 				Errors map[string][]string `json:"errors"`
@@ -181,7 +181,7 @@ func (s *Server) handleUpdateCurrentUser() http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Add("Content-Type", "application/json; charset=utf-8")
+		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}
