@@ -88,7 +88,7 @@ type Data struct {
 func GetBearerToken(r *http.Request) (*JWT, error) {
 	headerAuthText := r.Header.Get("Authorization")
 	if headerAuthText == "" {
-		return nil, ErrUnauthorized
+		return nil, ErrMissingAuthHeader
 	}
 	authTokens := strings.SplitN(headerAuthText, " ", 2)
 	if len(authTokens) != 2 {
@@ -96,12 +96,12 @@ func GetBearerToken(r *http.Request) (*JWT, error) {
 	}
 	authType, authToken := authTokens[0], strings.TrimSpace(authTokens[1])
 	if authType != "Bearer" {
-		return nil, ErrUnauthorized
+		return nil, ErrNotBearer
 	}
 
 	sections := strings.Split(authToken, ".")
 	if len(sections) != 3 || len(sections[0]) == 0 || len(sections[1]) == 0 || len(sections[2]) == 0 {
-		return nil, ErrBadRequest
+		return nil, ErrNotJWT
 	}
 
 	var j JWT
