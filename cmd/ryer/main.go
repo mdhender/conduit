@@ -70,6 +70,7 @@ func run(cfg *config.Config) error {
 
 	s.Routes()
 
+	// TODO: allow HTTPS
 	log.Printf("[main] listening on %s\n", s.Addr)
 	return s.ListenAndServe()
 }
